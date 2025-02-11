@@ -3,7 +3,7 @@ from pathlib import Path
 
 # Configure image and ROI cache sizes
 IMAGE_CACHE_SIZE_MB = int(getenv("IMAGE_CACHE_SIZE_MB", 100))
-ROI_CACHE_SIZE_MB = int(getenv("ROI_CACHE_SIZE_MB", 10000))
+ROI_CACHE_SIZE_MB = int(getenv("ROI_CACHE_SIZE_MB", 100))
 
 # Configure filesystem cache directory
 CACHE_DIR = Path(getenv("CACHE_DIR", "/tmp/skimmer_cache"))

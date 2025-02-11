@@ -1,5 +1,12 @@
 import pytest
-from skimmer import app, fetch_image, crop_image, roi_cache, CachedImage, generate_cache_key
+from skimmer import (
+    app,
+    fetch_image,
+    crop_image,
+    roi_cache,
+    CachedImage,
+    generate_cache_key,
+)
 from skimmer.config import CACHE_DIR
 from PIL import Image
 import shutil

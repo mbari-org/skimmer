@@ -17,11 +17,14 @@ from skimmer.config import (
 app = Flask(__name__)
 
 # Initialize diskcache for ROIs
-roi_cache = Cache(CACHE_DIR, size_limit=ROI_CACHE_SIZE_MB * 1024 ** 2)
+roi_cache = Cache(CACHE_DIR, size_limit=ROI_CACHE_SIZE_MB * 1024**2)
 roi_cache.expire()  # Ensure expired items are removed
 
 # In-memory cache for full images
-full_image_cache = LRUCache(maxsize=IMAGE_CACHE_SIZE_MB * 1024 ** 2, getsizeof=lambda image: len(image.tobytes()))
+full_image_cache = LRUCache(
+    maxsize=IMAGE_CACHE_SIZE_MB * 1024**2, getsizeof=lambda image: len(image.tobytes())
+)
+
 
 class CachedImage:
     def __init__(self, data: bytes):

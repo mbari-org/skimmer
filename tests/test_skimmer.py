@@ -77,8 +77,13 @@ def test_cache_eviction(mocker):
     mocker.patch("requests.get", return_value=mock_response)
 
     left, top, right, bottom = 10, 10, 100, 100
-    for i in range(1, 102):  # Assuming CACHE_SIZE is 100
+    initial_key = generate_cache_key(f"{url}?id=1", left, top, right, bottom)
+    crop_image(f"{url}?id=1", left, top, right, bottom)
+
+    i = 2
+    while roi_cache.get(initial_key) is not None:
         crop_image(f"{url}?id={i}", left, top, right, bottom)
+        i += 1
 
     cropped_image = crop_image(url, left, top, right, bottom)
     assert isinstance(cropped_image, CachedImage)

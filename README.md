@@ -1,7 +1,6 @@
-# Skimmer
+# skimmer
 
-## Description
-Skimmer is a highly-performant service that fetches an image from a URL, crops it based on provided bounding box coordinates, caches the result using an LRU cache, and returns the cropped image.
+Skimmer is a service that fetches an image from a URL, crops it based on provided bounding box coordinates, caches the result in memory & on the filesystem, and returns the cropped image.
 
 ## :hammer: Installation
 1. Clone the repository:

@@ -43,7 +43,7 @@ Skimmer is a service that fetches an image from a URL, crops it based on provide
 
    Replace `/path/to/local/cache` with the path to a directory on your host machine where you want to store the cached images persistently.
 
-## Environment Variables
+## :gear: Environment Variables
 - `CACHE_SIZE`: The maximum number of items to store in the LRU cache (default: 100).
 - `CACHE_TTL`: The time-to-live for cache items in seconds (default: 300).
 - `CACHE_DIR`: The directory to store the filesystem cache (default: `/tmp/skimmer_cache`).

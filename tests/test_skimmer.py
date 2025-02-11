@@ -1,5 +1,5 @@
 import pytest
-from skimmer import app, fetch_image, crop_image, cache, CachedImage
+from skimmer import app, fetch_image, crop_image, roi_cache, CachedImage, generate_cache_key
 from skimmer.config import CACHE_DIR
 from PIL import Image
 import shutil
@@ -14,7 +14,7 @@ def client():
 
 @pytest.fixture(autouse=True)
 def clear_cache():
-    cache.clear()
+    roi_cache.clear()
     shutil.rmtree(CACHE_DIR)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -39,7 +39,6 @@ def test_crop_image_miss(mocker):
     cropped_image = crop_image(url, left, top, right, bottom)
     assert isinstance(cropped_image, CachedImage)
     assert cropped_image.headers["X-Cache"] == "MISS"
-    assert cropped_image.headers["X-Cache-Source"] == "None"
 
 
 def test_crop_endpoint_miss(client, mocker):
@@ -52,7 +51,6 @@ def test_crop_endpoint_miss(client, mocker):
     assert response.status_code == 200
     assert response.mimetype == "image/png"
     assert response.headers["X-Cache"] == "MISS"
-    assert response.headers["X-Cache-Source"] == "None"
 
 
 def test_crop_endpoint_hit(client, mocker):
@@ -70,7 +68,6 @@ def test_crop_endpoint_hit(client, mocker):
     assert response.status_code == 200
     assert response.mimetype == "image/png"
     assert response.headers["X-Cache"] == "HIT"
-    assert response.headers["X-Cache-Source"] == "Memory"
 
 
 def test_cache_eviction(mocker):
@@ -86,7 +83,6 @@ def test_cache_eviction(mocker):
     cropped_image = crop_image(url, left, top, right, bottom)
     assert isinstance(cropped_image, CachedImage)
     assert cropped_image.headers["X-Cache"] == "MISS"
-    assert cropped_image.headers["X-Cache-Source"] == "None"
 
 
 def test_filesystem_cache_persistence(mocker):
@@ -97,10 +93,11 @@ def test_filesystem_cache_persistence(mocker):
 
     left, top, right, bottom = 10, 10, 100, 100
     crop_image(url, left, top, right, bottom)  # Cache the image
-    cache.clear()  # Clear the in-memory cache
+    cached_image = roi_cache.get(generate_cache_key(url, left, top, right, bottom))
+    assert cached_image is not None  # Ensure the image is cached in the filesystem
+    roi_cache.expire()  # Ensure expired items are removed
     cropped_image = crop_image(
         url, left, top, right, bottom
     )  # Should hit the filesystem cache
     assert isinstance(cropped_image, CachedImage)
     assert cropped_image.headers["X-Cache"] == "HIT"
-    assert cropped_image.headers["X-Cache-Source"] == "Filesystem"

@@ -44,8 +44,8 @@ Skimmer is a service that fetches an image from a URL, crops it based on provide
    Replace `/path/to/local/cache` with the path to a directory on your host machine where you want to store the cached images persistently.
 
 ## :gear: Environment Variables
-- `CACHE_SIZE`: The maximum number of items to store in the LRU cache (default: 100).
-- `CACHE_TTL`: The time-to-live for cache items in seconds (default: 300).
+- `IMAGE_CACHE_SIZE_MB`: The maximum size of the in-memory cache for full images in megabytes (default: 100).
+- `ROI_CACHE_SIZE_MB`: The maximum size of the filesystem cache for ROIs in megabytes (default: 100).
 - `CACHE_DIR`: The directory to store the filesystem cache (default: `/tmp/skimmer_cache`).
 - `APP_HOST`: The host address for the Flask application (default: `0.0.0.0`).
 - `APP_PORT`: The port for the Flask application (default: 5000).
@@ -60,7 +60,6 @@ pytest
 ## Custom Headers
 The service returns custom headers to indicate the cache status of the image:
 - `X-Cache`: Indicates whether the image was a cache hit or miss. Possible values are `HIT` or `MISS`.
-- `X-Cache-Source`: Indicates the source of the cache hit. Possible values are `Memory` or `Filesystem` (or `None` in the case of `X-Cache: MISS`).
 
 ---
 

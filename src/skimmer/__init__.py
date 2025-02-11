@@ -2,11 +2,12 @@ from flask import Flask, request, send_file, Response
 from io import BytesIO
 from PIL import Image
 import requests
-from cachetools import cached, TTLCache
+from diskcache import Cache
+from cachetools import LRUCache
 import hashlib
 from skimmer.config import (
-    CACHE_SIZE,
-    CACHE_TTL,
+    IMAGE_CACHE_SIZE_MB,
+    ROI_CACHE_SIZE_MB,
     CACHE_DIR,
     APP_HOST,
     APP_PORT,
@@ -15,8 +16,12 @@ from skimmer.config import (
 
 app = Flask(__name__)
 
-cache = TTLCache(maxsize=CACHE_SIZE, ttl=CACHE_TTL)
+# Initialize diskcache for ROIs
+roi_cache = Cache(CACHE_DIR, size_limit=ROI_CACHE_SIZE_MB * 1024 ** 2)
+roi_cache.expire()  # Ensure expired items are removed
 
+# In-memory cache for full images
+full_image_cache = LRUCache(maxsize=IMAGE_CACHE_SIZE_MB * 1024 ** 2, getsizeof=lambda image: len(image.tobytes()))
 
 class CachedImage:
     def __init__(self, data: bytes):
@@ -45,35 +50,6 @@ def generate_cache_key(url: str, left: int, top: int, right: int, bottom: int) -
     return hashlib.md5(key.encode()).hexdigest()
 
 
-def save_to_filesystem_cache(key: str, img_data: bytes) -> None:
-    """
-    Save image to filesystem cache.
-
-    Args:
-        key (str): The cache key.
-        img_data (bytes): The image byte array.
-    """
-    with (CACHE_DIR / key).open("wb") as f:
-        f.write(img_data)
-
-
-def load_from_filesystem_cache(key: str) -> CachedImage:
-    """
-    Load image from filesystem cache.
-
-    Args:
-        key (str): The cache key.
-
-    Returns:
-        CachedImage: The image byte array if found, else None.
-    """
-    file_path = CACHE_DIR / key
-    if file_path.exists():
-        with file_path.open("rb") as f:
-            return CachedImage(f.read())
-    return None
-
-
 def fetch_image(url: str) -> Image.Image:
     """
     Fetch image from the given URL.
@@ -84,12 +60,16 @@ def fetch_image(url: str) -> Image.Image:
     Returns:
         Image.Image: The fetched image.
     """
+    if url in full_image_cache:
+        return full_image_cache[url]
+
     response = requests.get(url)
     response.raise_for_status()
-    return Image.open(BytesIO(response.content))
+    image = Image.open(BytesIO(response.content))
+    full_image_cache[url] = image
+    return image
 
 
-@cached(cache, key=generate_cache_key)
 def crop_image(url: str, left: int, top: int, right: int, bottom: int) -> CachedImage:
     """
     Crop the image from the given URL based on the provided coordinates.
@@ -105,10 +85,9 @@ def crop_image(url: str, left: int, top: int, right: int, bottom: int) -> Cached
         CachedImage: The cropped image byte array.
     """
     cache_key = generate_cache_key(url, left, top, right, bottom)
-    cached_image = load_from_filesystem_cache(cache_key)
+    cached_image = roi_cache.get(cache_key)
     if cached_image:
         cached_image.headers["X-Cache"] = "HIT"
-        cached_image.headers["X-Cache-Source"] = "Filesystem"
         return cached_image
 
     image = fetch_image(url)
@@ -116,11 +95,10 @@ def crop_image(url: str, left: int, top: int, right: int, bottom: int) -> Cached
     img_byte_arr = BytesIO()
     cropped_image.save(img_byte_arr, format="PNG")
     img_data = img_byte_arr.getvalue()
-    save_to_filesystem_cache(cache_key, img_data)
-    img_byte_arr = CachedImage(img_data)
-    img_byte_arr.headers["X-Cache"] = "MISS"
-    img_byte_arr.headers["X-Cache-Source"] = "None"
-    return img_byte_arr
+    cached_image = CachedImage(img_data)
+    cached_image.headers["X-Cache"] = "MISS"
+    roi_cache.set(cache_key, cached_image)
+    return cached_image
 
 
 @app.route("/crop", methods=["GET"])
@@ -137,18 +115,9 @@ def crop() -> Response:
     right = int(request.args.get("right"))
     bottom = int(request.args.get("bottom"))
 
-    cache_key = generate_cache_key(url, left, top, right, bottom)
-    if cache_key in cache:
-        cached_image = cache[cache_key]
-        response = send_file(BytesIO(cached_image.get_data()), mimetype="image/png")
-        response.headers["X-Cache"] = "HIT"
-        response.headers["X-Cache-Source"] = "Memory"
-        return response
-
     cropped_image = crop_image(url, left, top, right, bottom)
     response = send_file(BytesIO(cropped_image.get_data()), mimetype="image/png")
     response.headers["X-Cache"] = cropped_image.headers["X-Cache"]
-    response.headers["X-Cache-Source"] = cropped_image.headers["X-Cache-Source"]
     return response
 
 

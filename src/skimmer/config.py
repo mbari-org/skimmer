@@ -1,9 +1,9 @@
 from os import getenv
 from pathlib import Path
 
-# Configure cache size (number of items) and TTL (time to live in seconds)
-CACHE_SIZE = int(getenv("CACHE_SIZE", 100))
-CACHE_TTL = int(getenv("CACHE_TTL", 300))
+# Configure image and ROI cache sizes
+IMAGE_CACHE_SIZE_MB = int(getenv("IMAGE_CACHE_SIZE_MB", 100))
+ROI_CACHE_SIZE_MB = int(getenv("ROI_CACHE_SIZE_MB", 10000))
 
 # Configure filesystem cache directory
 CACHE_DIR = Path(getenv("CACHE_DIR", "/tmp/skimmer_cache"))

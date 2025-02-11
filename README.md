@@ -62,3 +62,7 @@ pytest
 The service returns custom headers to indicate the cache status of the image:
 - `X-Cache`: Indicates whether the image was a cache hit or miss. Possible values are `HIT` or `MISS`.
 - `X-Cache-Source`: Indicates the source of the cache hit. Possible values are `Memory` or `Filesystem` (or `None` in the case of `X-Cache: MISS`).
+
+---
+
+Copyright &copy; 2025 [Monterey Bay Aquarium Research Institute](https://mbari.org/)

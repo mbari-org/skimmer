@@ -37,10 +37,12 @@ Skimmer is a highly-performant service that fetches an image from a URL, crops i
    docker build -t skimmer .
    ```
 
-2. Run the Docker container:
+2. Run the Docker container with a persistent volume for the image crops:
    ```sh
-   docker run -p 5000:5000 --env-file .env skimmer
+   docker run -p 5000:5000 --env-file .env -v /path/to/local/cache:/tmp/skimmer_cache skimmer
    ```
+
+   Replace `/path/to/local/cache` with the path to a directory on your host machine where you want to store the cached images persistently.
 
 ## Environment Variables
 - `CACHE_SIZE`: The maximum number of items to store in the LRU cache (default: 100).

@@ -1,4 +1,4 @@
-# skimmer
+# Skimmer
 
 Skimmer is a service that fetches an image from a URL, crops it based on provided bounding box coordinates, caches the result in memory & on the filesystem, and returns the cropped image.
 

@@ -145,7 +145,6 @@ def crop() -> Response:
     Returns:
         Response: The cropped image with custom headers.
     """
-    print(request.args)
     url = request.args.get("url")
     left = int(request.args.get("left"))
     top = int(request.args.get("top"))

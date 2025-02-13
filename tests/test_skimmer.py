@@ -1,6 +1,6 @@
 import pytest
 from skimmer import (
-    app,
+    create_app,
     fetch_image,
     crop_image,
     roi_cache,
@@ -14,6 +14,7 @@ import shutil
 
 @pytest.fixture
 def client():
+    app = create_app()
     app.config["TESTING"] = True
     with app.test_client() as client:
         yield client

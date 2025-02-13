@@ -18,13 +18,14 @@ COPY .env.example /app/.env
 # Expose the port the app runs on
 EXPOSE 5000
 
-# Set environment variables
-ENV CACHE_SIZE=100 \
-    CACHE_TTL=300 \
-    CACHE_DIR=/tmp/skimmer_cache \
-    APP_HOST=0.0.0.0 \
-    APP_PORT=5000 \
-    APP_DEBUG=false
+# Set environment variable defaults
+ENV IMAGE_CACHE_SIZE_MB=100
+ENV ROI_CACHE_SIZE_MB=1000
+ENV CACHE_DIR=/tmp/skimmer_cache
+ENV APP_HOST=0.0.0.0
+ENV APP_PORT=5000
+ENV APP_WORKERS=1
 
 # Run the application
-CMD ["skimmer"]
+CMD ["sh", "-c", "exec gunicorn -w $APP_WORKERS -b $APP_HOST:$APP_PORT 'skimmer:create_app'"] 
+ 

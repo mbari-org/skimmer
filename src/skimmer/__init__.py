@@ -11,17 +11,13 @@ from cachetools import LRUCache
 from beholder_client import BeholderClient
 
 from skimmer.config import (
+    APP_NAME,
     IMAGE_CACHE_SIZE_MB,
     ROI_CACHE_SIZE_MB,
     CACHE_DIR,
-    APP_HOST,
-    APP_PORT,
-    APP_DEBUG,
     BEHOLDER_URL,
     BEHOLDER_API_KEY,
 )
-
-app = Flask(__name__)
 
 # Initialize diskcache for ROIs
 roi_cache = Cache(CACHE_DIR, size_limit=ROI_CACHE_SIZE_MB * 1024**2)
@@ -137,7 +133,6 @@ def crop_image(url: str, left: int, top: int, right: int, bottom: int) -> Cached
     return cached_image
 
 
-@app.route("/crop", methods=["GET"])
 def crop() -> Response:
     """
     Crop the image based on the provided URL and coordinates.
@@ -157,8 +152,13 @@ def crop() -> Response:
     return response
 
 
-def main() -> None:
+def create_app() -> Flask:
     """
-    Run the Flask application.
+    Create and configure the Flask application.
+
+    Returns:
+        Flask: The configured Flask application.
     """
-    app.run(host=APP_HOST, port=APP_PORT, debug=APP_DEBUG)
+    app = Flask(APP_NAME)
+    app.route("/crop", methods=["GET"])(crop)
+    return app

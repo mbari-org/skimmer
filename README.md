@@ -49,7 +49,7 @@ Skimmer is a service that fetches an image from a URL, crops it based on provide
 - `CACHE_DIR`: The directory to store the filesystem cache (default: `/tmp/skimmer_cache`).
 - `APP_HOST`: The host address for the Flask application (default: `0.0.0.0`).
 - `APP_PORT`: The port for the Flask application (default: 5000).
-- `APP_DEBUG`: Enable or disable debug mode for the Flask application (default: `false`).
+- `APP_WORKERS`: The number of worker processes for handling requests (default: 1).
 
 ## Running Tests
 

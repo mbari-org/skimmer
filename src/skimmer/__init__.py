@@ -1,10 +1,15 @@
-from flask import Flask, request, send_file, Response
+import hashlib
 from io import BytesIO
-from PIL import Image
+from typing import Optional
+from urllib.parse import urlparse, parse_qs
+
 import requests
+from flask import Flask, request, send_file, Response
+from PIL import Image
 from diskcache import Cache
 from cachetools import LRUCache
-import hashlib
+from beholder_client import BeholderClient
+
 from skimmer.config import (
     IMAGE_CACHE_SIZE_MB,
     ROI_CACHE_SIZE_MB,
@@ -12,6 +17,8 @@ from skimmer.config import (
     APP_HOST,
     APP_PORT,
     APP_DEBUG,
+    BEHOLDER_URL,
+    BEHOLDER_API_KEY,
 )
 
 app = Flask(__name__)
@@ -24,6 +31,11 @@ roi_cache.expire()  # Ensure expired items are removed
 full_image_cache = LRUCache(
     maxsize=IMAGE_CACHE_SIZE_MB * 1024**2, getsizeof=lambda image: len(image.tobytes())
 )
+
+# Beholder client
+beholder_client: Optional[BeholderClient] = None
+if BEHOLDER_URL is not None and BEHOLDER_API_KEY is not None:
+    beholder_client = BeholderClient(BEHOLDER_URL, BEHOLDER_API_KEY)
 
 
 class CachedImage:
@@ -56,6 +68,9 @@ def generate_cache_key(url: str, left: int, top: int, right: int, bottom: int) -
 def fetch_image(url: str) -> Image.Image:
     """
     Fetch image from the given URL.
+    
+    Handles a custom protocol `beholder` to call the Beholder service for video frame extraction, if configured.
+        Usage: `beholder://<video_url>?ms=<timestamp in milliseconds>`
 
     Args:
         url (str): The URL of the image.
@@ -66,9 +81,27 @@ def fetch_image(url: str) -> Image.Image:
     if url in full_image_cache:
         return full_image_cache[url]
 
-    response = requests.get(url)
-    response.raise_for_status()
-    image = Image.open(BytesIO(response.content))
+    parsed_url = urlparse(url)
+    image_bytes = None
+    if parsed_url.scheme in ("http", "https"):
+        response = requests.get(url)
+        response.raise_for_status()
+        image_bytes = response.content
+    elif parsed_url.scheme == "beholder":
+        if beholder_client is None:
+            raise ValueError("Beholder client is not configured. Set BEHOLDER_URL and BEHOLDER_API_KEY.")
+        video_url = f"https://{parsed_url.netloc}{parsed_url.path}"  # TODO: This is brittle
+        query = parse_qs(parsed_url.query)
+        query_ms = query.get("ms", None)
+        if not query_ms:
+            raise ValueError("Timestamp not provided in the query string.")
+        try:
+            timestamp_ms = int(query_ms[0])
+        except ValueError as e:
+            raise ValueError("Invalid timestamp provided in the query string.") from e
+        image_bytes = beholder_client.capture_raw(video_url, timestamp_ms)
+
+    image = Image.open(BytesIO(image_bytes))
     full_image_cache[url] = image
     return image
 
@@ -112,6 +145,7 @@ def crop() -> Response:
     Returns:
         Response: The cropped image with custom headers.
     """
+    print(request.args)
     url = request.args.get("url")
     left = int(request.args.get("left"))
     top = int(request.args.get("top"))

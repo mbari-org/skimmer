@@ -10,7 +10,7 @@ services:
       CACHE_DIR: "/etc/skimmer_cache"
       APP_HOST: "0.0.0.0"
       APP_PORT: "5000"
-      APP_DEBUG: false
+      APP_WORKERS: "8"
       BEHOLDER_URL: "https://gehenna.shore.mbari.org/capture"
       BEHOLDER_API_KEY: "foo"
     volumes:

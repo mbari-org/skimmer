@@ -20,4 +20,4 @@ fi
 gunicorn \
     --bind $APP_HOST:$APP_PORT \
     --workers $APP_WORKERS \
-    'skimmer:create_app()'
+    'skimmer:create_default_flask_app()'

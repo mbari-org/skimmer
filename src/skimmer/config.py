@@ -1,10 +1,6 @@
 from os import getenv
 from pathlib import Path
 
-
-# Configure Flask app parameters
-APP_NAME = "skimmer"
-
 # Configure image and ROI cache sizes
 IMAGE_CACHE_SIZE_MB = int(getenv("IMAGE_CACHE_SIZE_MB", 100))
 ROI_CACHE_SIZE_MB = int(getenv("ROI_CACHE_SIZE_MB", 100))

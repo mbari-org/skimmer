@@ -27,5 +27,5 @@ ENV APP_PORT=5000
 ENV APP_WORKERS=1
 
 # Run the application
-CMD ["sh", "-c", "exec gunicorn -w $APP_WORKERS -b $APP_HOST:$APP_PORT 'skimmer:create_app'"] 
+CMD ["sh", "-c", "exec gunicorn -w $APP_WORKERS -b $APP_HOST:$APP_PORT 'skimmer:create_app()'"] 
  

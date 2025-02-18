@@ -41,14 +41,13 @@ class Skimmer:
         response = requests.get(url)
         response.raise_for_status()
 
-        # Convert
+        # Convert and cache
         image_bytes = response.content
-        image = Image.open(BytesIO(image_bytes))
-
-        # Cache
-        self._cache.set_image(image, url)
-
-        return image
+        with BytesIO(image_bytes) as img_buffer:
+            image = Image.open(img_buffer)
+            image.load()
+            self._cache.set_image(image, url)
+            return image
 
     def fetch_video_frame(self, url: str, ms: int) -> Image.Image:
         """
@@ -117,12 +116,13 @@ class Skimmer:
             image = self.fetch_image(url)
 
         # Crop
-        cropped_image = image.crop((left, top, right, bottom))
-
-        # Convert to byte array
-        img_byte_arr = BytesIO()
-        cropped_image.save(img_byte_arr, format="PNG")
-        img_data = img_byte_arr.getvalue()
+        with image:  # ensure image is closed after use
+            cropped_image = image.crop((left, top, right, bottom))
+            
+            # Convert to byte array
+            with BytesIO() as img_byte_arr:
+                cropped_image.save(img_byte_arr, format="PNG")
+                img_data = img_byte_arr.getvalue()
 
         # Cache
         roi = CachedROI(img_data)

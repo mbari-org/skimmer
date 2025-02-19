@@ -63,6 +63,7 @@ jobs:
 
       - name: Test package
         run: |
+          . .venv/bin/activate
           pytest -v
 
   release:

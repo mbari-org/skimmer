@@ -20,15 +20,45 @@ Skimmer is a service that fetches an image from a URL, crops it based on provide
    ```
 
 ## :rocket: Usage
-1. Run the service:
+
+A run script `run.sh` is provided to start the service. Set the appropriate environment variables in `.env`, then run:
+```sh
+./run.sh
+```
+
+### API
+
+#### Crop
+
+The main endpoint of the service is `/crop`, which takes the following query parameters:
+- `url`: The URL of the image or video to crop.
+- `left`: The left coordinate of the bounding box.
+- `top`: The top coordinate of the bounding box.
+- `right`: The right coordinate of the bounding box.
+- `bottom`: The bottom coordinate of the bounding box.
+- `ms`: The timestamp in milliseconds for videos.
+
+The response will be a PNG image representing the cropped region of interest.
+
+- Image:
    ```sh
-   skimmer
+   curl http://localhost:5000/crop?url=http://example.com/image.jpg&left=0&top=0&right=100&bottom=100
+   # image bytes
    ```
 
-2. Access the service by making a GET request to:
+- Video (@ 1000 ms):
+   ```sh
+   curl http://localhost:5000/crop?url=http://example.com/video.mp4&left=0&top=0&right=100&bottom=100&ms=1000
+   # image bytes
    ```
-   http://localhost:5000/crop?url=<image_url>&left=<left>&top=<top>&right=<right>&bottom=<bottom>
-   ```
+
+#### Health Check
+
+The service also provides a health check endpoint at `/health` that returns a 200 status code if the service is running and a JSON response with some process info. For example:
+```sh
+curl http://localhost:5000/health
+# {"jdkVersion": "Python 3.12.9 (main, Feb  5 2025, 08:49:00) [GCC 11.4.0]", "availableProcessors": 20, "freeMemory": 28491902976, "maxMemory": 33434419200, "totalMemory": 33434419200, "application": "skimmer", "version": "0.1.0", "description": "ROI Service"}
+```
 
 ## :whale: Docker
 1. Build the Docker image:

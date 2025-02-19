@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v0.1.1 (2025-02-19)
+
+### Bug Fixes
+
+- Broaden Python availability, fix CI
+  ([`b4935b2`](https://github.com/mbari-org/skimmer/commit/b4935b2a8b087c4401964347358eaee293b32bed))
+
+### Chores
+
+- Activate env before running pytest
+  ([`cd7967d`](https://github.com/mbari-org/skimmer/commit/cd7967dd4a1dd7241af42b5532692a83609f5379))
+
+- Fix CI order, create venv
+  ([`de0b561`](https://github.com/mbari-org/skimmer/commit/de0b5614def436f846b9bfc3aa219f4e6edc54e0))
+
+- Fix typo in python install in CI
+  ([`83e4cb8`](https://github.com/mbari-org/skimmer/commit/83e4cb8d6c5d9ccb0109301a59399db2cbf05e8d))
+
+
 ## v0.1.0 (2025-02-19)
 
 ### Bug Fixes

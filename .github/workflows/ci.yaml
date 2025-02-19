@@ -57,7 +57,7 @@ jobs:
 
       - name: Install package
         run: |
-          uv install python ${{ matrix.python-version }}
+          uv python install ${{ matrix.python-version }}
           uv venv --python ${{ matrix.python-version }}
           uv pip install .
 

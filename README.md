@@ -2,6 +2,8 @@
 
 Skimmer is a service that fetches an image from a URL, crops it based on provided bounding box coordinates, caches the result in memory & on the filesystem, and returns the cropped image.
 
+Skimmer also integrates with [Beholder](https://github.com/mbari-org/beholder) to fetch frames from videos.
+
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/language-Python-blue.svg)](https://www.python.org/downloads/)
 [![.github/workflows/ci.yaml](https://github.com/mbari-org/skimmer/actions/workflows/ci.yaml/badge.svg)](https://github.com/mbari-org/skimmer/actions/workflows/ci.yaml)
@@ -69,23 +71,24 @@ curl http://localhost:5000/health
 ```
 
 ## :whale: Docker
-1. Build the Docker image:
-   ```sh
-   docker build -t skimmer .
-   ```
 
-2. Run the Docker container with a persistent volume for the image crops:
-   ```sh
-   docker run -p 5000:5000 --env-file .env -v /path/to/local/cache:/tmp/skimmer_cache skimmer
-   ```
+Skimmer is available on Docker Hub as [`mbari/skimmer`](https://hub.docker.com/repository/docker/mbari/skimmer). To run the service in a Docker container:
 
-   Replace `/path/to/local/cache` with the path to a directory on your host machine where you want to store the cached images persistently.
+```sh
+docker run \
+   -p 5000:5000 \
+   --env-file .env \
+   -v /path/to/local/cache:/tmp/skimmer_cache \
+   mbari/skimmer
+```
+
+Replace `/path/to/local/cache` with the path to a directory on your host machine where you want to store the cached images persistently.
 
 ### Compose
 
-An example `compose.yaml` is provided. To run the service with Docker Compose, first edit this file to set the environment variables as desired. Then run:
+An example [`compose.yaml`](docker/compose.yaml) is provided. To run Skimmer with Docker Compose, first edit the compose file to set the environment variables as desired, then run:
 ```sh
-docker compose up
+docker compose -f docker/compose.yaml up
 ```
 
 ## :gear: Environment Variables

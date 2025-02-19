@@ -5,7 +5,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      IMAGE_CACHE_SIZE_MB: 1000
+      IMAGE_CACHE_SIZE_MB: 100
       ROI_CACHE_SIZE_MB: 10000
       CACHE_DIR: "/etc/skimmer_cache"
       APP_HOST: "0.0.0.0"

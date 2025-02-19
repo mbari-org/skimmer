@@ -43,19 +43,37 @@ Skimmer is a service that fetches an image from a URL, crops it based on provide
 
    Replace `/path/to/local/cache` with the path to a directory on your host machine where you want to store the cached images persistently.
 
+### Compose
+
+An example `compose.yaml` is provided. To run the service with Docker Compose, first edit this file to set the environment variables as desired. Then run:
+```sh
+docker compose up
+```
+
 ## :gear: Environment Variables
-- `IMAGE_CACHE_SIZE_MB`: The maximum size of the in-memory cache for full images in megabytes (default: 100).
-- `ROI_CACHE_SIZE_MB`: The maximum size of the filesystem cache for ROIs in megabytes (default: 100).
-- `CACHE_DIR`: The directory to store the filesystem cache (default: `/tmp/skimmer_cache`).
+
+### App
 - `APP_HOST`: The host address for the Flask application (default: `0.0.0.0`).
 - `APP_PORT`: The port for the Flask application (default: 5000).
 - `APP_WORKERS`: The number of worker processes for handling requests (default: 1).
 
+### Cache
+- `IMAGE_CACHE_SIZE_MB`: The maximum size of the in-memory cache for full images in megabytes (default: 100). Note that this is per-worker, so the total memory usage will be approximately `APP_WORKERS * IMAGE_CACHE_SIZE_MB`.
+- `CACHE_DIR`: The directory to store the filesystem cache (default: `/tmp/skimmer_cache`).
+- `ROI_CACHE_SIZE_MB`: The maximum size of the filesystem cache for ROIs in megabytes (default: 100).
+
+### Beholder
+- `BEHOLDER_URL`: The URL of the Beholder service to use for fetching images. If unspecified, the service will still work for static images, but it will not be able to fetch frames from video using Beholder.
+- `BEHOLDER_API_KEY`: The API key to use for authenticating with the Beholder service.
+
 ## Running Tests
 
+Pytest is used for testing. To run the tests, simply run:
 ```sh
 pytest
 ```
+
+Note that this will use the environment from `.env.test` for testing.
 
 ## Custom Headers
 The service returns custom headers to indicate the cache status of the image:

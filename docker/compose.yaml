@@ -1,7 +1,7 @@
 services:
   skimmer:
     container_name: skimmer
-    image: skimmer:latest
+    image: mbari/skimmer:latest
     ports:
       - "5000:5000"
     environment:

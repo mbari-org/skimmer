@@ -2,6 +2,14 @@
 
 Skimmer is a service that fetches an image from a URL, crops it based on provided bounding box coordinates, caches the result in memory & on the filesystem, and returns the cropped image.
 
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/language-Python-blue.svg)](https://www.python.org/downloads/)
+[![.github/workflows/ci.yaml](https://github.com/mbari-org/skimmer/actions/workflows/ci.yaml/badge.svg)](https://github.com/mbari-org/skimmer/actions/workflows/ci.yaml)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://docs.astral.sh/ruff/)
+
+Author: Kevin Barnard ([kbarnard@mbari.org](mailto:kbarnard@mbari.org))
+
 ## :hammer: Installation
 1. Clone the repository:
    ```sh

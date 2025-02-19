@@ -1,11 +1,13 @@
 from io import BytesIO
 
 from flask import Flask, request, send_file, Response
+from psutil import cpu_count, virtual_memory
+from sys import version as python_version
 
 from skimmer.core import Skimmer
-from skimmer.constants import APP_NAME
+from skimmer.constants import APP_DESCRIPTION, APP_NAME, APP_VERSION
 from skimmer.exceptions import InvalidURLError, BeholderNotConfiguredError
-from skimmer.responses import ErrorResponse
+from skimmer.responses import ErrorResponse, JSONResponse
 from skimmer.utils import is_valid_url
 
 
@@ -55,11 +57,33 @@ class SkimmerAPI:
         except Exception as e:
             return ErrorResponse(f"An unexpected error occurred: {str(e)}", status=500)
 
+    def health(self) -> Response:
+        """
+        Check the health of the API.
+
+        Returns:
+            Response: The health status of the API.
+        """
+        memory_info = virtual_memory()
+        health_data = {
+            "jdkVersion": f"Python {python_version}",
+            "availableProcessors": cpu_count(),
+            "freeMemory": memory_info.available,
+            "maxMemory": memory_info.total,
+            "totalMemory": memory_info.total,
+            "application": APP_NAME,
+            "version": APP_VERSION,
+            "description": APP_DESCRIPTION,
+        }
+        
+        return JSONResponse(health_data)
+
     def _configure(self) -> None:
         """
         Configure the Flask application routes.
         """
         self._app.route("/crop", methods=["GET"])(self.crop)
+        self._app.route("/health", methods=["GET"])(self.health)
 
     @property
     def app(self) -> Flask:

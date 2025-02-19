@@ -20,4 +20,5 @@ fi
 gunicorn \
     --bind $APP_HOST:$APP_PORT \
     --workers $APP_WORKERS \
+    --config env/gunicorn.conf.py \
     'skimmer:create_default_flask_app()'

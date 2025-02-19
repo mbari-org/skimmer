@@ -13,7 +13,7 @@ RUN pip install .
 
 # Copy the rest of the application code to the container
 COPY src/ /app/src/
-COPY .env.example /app/.env
+COPY env/.env.example /app/.env
 
 # Expose the port the app runs on
 EXPOSE 5000

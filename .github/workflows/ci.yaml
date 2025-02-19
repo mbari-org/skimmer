@@ -1,0 +1,90 @@
+# GitHub action for CI: build, test, and semantic release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache uv
+        id: cache-uv
+        uses: actions/cache@v3
+        with:
+          path: ~/.local/bin/uv
+          key: ${{ runner.os }}-uv
+
+      - name: Install uv (if not cached)
+        if: steps.cache-uv.outputs.cache-hit != 'true'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Build
+        run: |
+          uv build
+
+  test:
+    runs-on: ubuntu-latest
+    matrix:
+      python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore uv from cache
+        id: cache-uv
+        uses: actions/cache@v3
+        with:
+          path: ~/.local/bin/uv
+          key: ${{ runner.os }}-uv
+
+      - name: Install uv (if not cached)
+        if: steps.cache-uv.outputs.cache-hit != 'true'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package
+        run: |
+          uv pip install .
+
+      - name: Test package
+        run: |
+          pytest -v
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    concurrency: release
+    permissions:
+      id-token: write
+      contents: write
+    outputs:
+      released: ${{ steps.semantic_release.outputs.released }}
+      tag: ${{ steps.semantic_release.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Python semantic release
+        id: semantic_release
+        uses: python-semantic-release/python-semantic-release@v9.15.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          vcs_release: true

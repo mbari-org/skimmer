@@ -75,7 +75,7 @@ class SkimmerAPI:
             "version": APP_VERSION,
             "description": APP_DESCRIPTION,
         }
-        
+
         return JSONResponse(health_data)
 
     def _configure(self) -> None:

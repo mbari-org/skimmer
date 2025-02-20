@@ -130,9 +130,13 @@ def test_beholder_not_configured_error(client, mocker):
     mock_response.content = open("tests/test_image.png", "rb").read()
     mocker.patch("requests.get", return_value=mock_response)
 
-    response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100&ms=1000")
+    response = client.get(
+        f"/crop?url={url}&left=10&top=10&right=100&bottom=100&ms=1000"
+    )
     assert response.status_code == 500
-    assert response.json == {"error": "Beholder client is not configured. Set BEHOLDER_URL and BEHOLDER_API_KEY."}
+    assert response.json == {
+        "error": "Beholder client is not configured. Set BEHOLDER_URL and BEHOLDER_API_KEY."
+    }
 
 
 def test_unexpected_error(client, mocker):
@@ -140,7 +144,9 @@ def test_unexpected_error(client, mocker):
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
     mocker.patch("requests.get", return_value=mock_response)
-    mocker.patch("skimmer.core.Skimmer.generate_crop", side_effect=Exception("Unexpected error"))
+    mocker.patch(
+        "skimmer.core.Skimmer.generate_crop", side_effect=Exception("Unexpected error")
+    )
 
     response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100")
     assert response.status_code == 500

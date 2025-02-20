@@ -118,7 +118,7 @@ class Skimmer:
         # Crop
         with image:  # ensure image is closed after use
             cropped_image = image.crop((left, top, right, bottom))
-            
+
             # Convert to byte array
             with BytesIO() as img_byte_arr:
                 cropped_image.save(img_byte_arr, format="PNG")

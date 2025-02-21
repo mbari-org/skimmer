@@ -27,7 +27,7 @@ def test_fetch_image(mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("requests.get", return_value=mock_response)
+    mocker.patch("httpx.get", return_value=mock_response)
 
     skimmer = Skimmer()
     image = skimmer.fetch_image(url)
@@ -38,7 +38,7 @@ def test_crop_image_miss(mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("requests.get", return_value=mock_response)
+    mocker.patch("httpx.get", return_value=mock_response)
 
     left, top, right, bottom = 10, 10, 100, 100
     skimmer = Skimmer()
@@ -51,7 +51,7 @@ def test_crop_endpoint_miss(client, mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("requests.get", return_value=mock_response)
+    mocker.patch("httpx.get", return_value=mock_response)
 
     response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100")
     assert response.status_code == 200
@@ -63,7 +63,7 @@ def test_crop_endpoint_hit(client, mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("requests.get", return_value=mock_response)
+    mocker.patch("httpx.get", return_value=mock_response)
 
     client.get(
         f"/crop?url={url}&left=10&top=10&right=100&bottom=100"
@@ -80,7 +80,7 @@ def test_cache_eviction(mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("requests.get", return_value=mock_response)
+    mocker.patch("httpx.get", return_value=mock_response)
 
     left, top, right, bottom = 10, 10, 100, 100
     initial_key = generate_roi_cache_key(f"{url}?id=1", left, top, right, bottom)
@@ -102,7 +102,7 @@ def test_filesystem_cache_persistence(mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("requests.get", return_value=mock_response)
+    mocker.patch("httpx.get", return_value=mock_response)
 
     left, top, right, bottom = 10, 10, 100, 100
     skimmer = Skimmer()
@@ -128,7 +128,7 @@ def test_beholder_not_configured_error(client, mocker):
     url = "https://example.com/video.mp4"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("requests.get", return_value=mock_response)
+    mocker.patch("httpx.get", return_value=mock_response)
 
     response = client.get(
         f"/crop?url={url}&left=10&top=10&right=100&bottom=100&ms=1000"
@@ -143,7 +143,7 @@ def test_unexpected_error(client, mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("requests.get", return_value=mock_response)
+    mocker.patch("httpx.get", return_value=mock_response)
     mocker.patch(
         "skimmer.core.Skimmer.generate_crop", side_effect=Exception("Unexpected error")
     )

@@ -5,7 +5,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Copy the app files to the container
-COPY pyproject.toml README.md gunicorn.conf.py /app/
+COPY pyproject.toml README.md env/gunicorn.conf.py /app/
 COPY src/ /app/src/
 
 # Install the app

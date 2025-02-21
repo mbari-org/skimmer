@@ -3,6 +3,19 @@ from json import dumps
 from flask import Response
 
 
+class ImageResponse(Response):
+    """
+    A custom image response class.
+
+    Args:
+        image (bytes): The image byte data.
+        status (int): The HTTP status code. Defaults to 200.
+    """
+
+    def __init__(self, response: bytes, status: int = 200):
+        super().__init__(response, status=status, mimetype="image/png")
+
+
 class JSONResponse(Response):
     """
     A custom JSON response class.

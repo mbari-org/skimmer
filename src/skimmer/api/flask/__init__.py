@@ -1,20 +1,19 @@
-from io import BytesIO
-
-from flask import Flask, request, send_file, Response
-from psutil import cpu_count, virtual_memory
 from sys import version as python_version
+
+from flask import Flask, request
+from psutil import cpu_count, virtual_memory
 
 from skimmer.core import Skimmer
 from skimmer.constants import APP_DESCRIPTION, APP_NAME, APP_VERSION
 from skimmer.exceptions import InvalidURLError, BeholderNotConfiguredError
-from skimmer.responses import ErrorResponse, JSONResponse
+from skimmer.api.flask.responses import ErrorResponse, ImageResponse, JSONResponse
 from skimmer.utils import is_valid_url
 
 
-class SkimmerAPI:
+class SkimmerFlaskAPI:
     def __init__(self, skimmer: Skimmer):
         """
-        Initialize the SkimmerAPI.
+        Initialize the SkimmerFlaskAPI.
 
         Args:
             skimmer (Skimmer): The Skimmer instance.
@@ -23,12 +22,12 @@ class SkimmerAPI:
         self._app = Flask(APP_NAME)
         self._configure()
 
-    def crop(self) -> Response:
+    def crop(self) -> ImageResponse:
         """
         Crop the image based on the provided URL and coordinates.
 
         Returns:
-            Response: The cropped image with custom headers.
+            ImageResponse: The cropped image with custom headers.
         """
         url = request.args.get("url")
         try:
@@ -44,9 +43,7 @@ class SkimmerAPI:
             cropped_image = self._skimmer.generate_crop(
                 url, left, top, right, bottom, ms=ms
             )
-            response = send_file(
-                BytesIO(cropped_image.get_data()), mimetype="image/png"
-            )
+            response = ImageResponse(cropped_image.get_data())
             response.headers["X-Cache"] = cropped_image.headers["X-Cache"]
             return response
 
@@ -57,12 +54,12 @@ class SkimmerAPI:
         except Exception as e:
             return ErrorResponse(f"An unexpected error occurred: {str(e)}", status=500)
 
-    def health(self) -> Response:
+    def health(self) -> JSONResponse:
         """
         Check the health of the API.
 
         Returns:
-            Response: The health status of the API.
+            JSONResponse: The health status of the API.
         """
         memory_info = virtual_memory()
         health_data = {

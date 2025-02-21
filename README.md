@@ -31,9 +31,13 @@ Author: Kevin Barnard ([kbarnard@mbari.org](mailto:kbarnard@mbari.org))
 
 ## :rocket: Usage
 
-A run script `run.sh` is provided to start the service. Set the appropriate environment variables in `.env`, then run:
+Run scripts for Flask + gunicorn (WSGI) and FastAPI + uvicorn (ASGI) are provided to start the service. Set the appropriate environment variables in `.env`, then run:
 ```sh
-./run.sh
+./run_flask.sh
+```
+or
+```sh
+./run_fastapi.sh
 ```
 
 ### API

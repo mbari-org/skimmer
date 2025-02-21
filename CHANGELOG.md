@@ -1,6 +1,43 @@
 # CHANGELOG
 
 
+## v0.2.0 (2025-02-21)
+
+### Chores
+
+- Add pre-commit as a development dependency
+  ([`ccb1ca2`](https://github.com/mbari-org/skimmer/commit/ccb1ca2789ceef9f0bb75a7b9a6775e654067e6c))
+
+- Add pre-commit configuration for ruff linting and formatting
+  ([`fa490f9`](https://github.com/mbari-org/skimmer/commit/fa490f92f80ff69d886506d53a2900221025d5ac))
+
+- Update Dockerfile and environment configurations
+  ([`3eaafeb`](https://github.com/mbari-org/skimmer/commit/3eaafebf31cd03e2c7fbb18c8c61002ca3efccab))
+
+### Code Style
+
+- Apply pre-commit hook
+  ([`5b5640c`](https://github.com/mbari-org/skimmer/commit/5b5640c231b0c18d532d6620074938173c8acfd7))
+
+### Documentation
+
+- Update README to include Beholder integration and Docker Hub information
+  ([`65f84c1`](https://github.com/mbari-org/skimmer/commit/65f84c13affb7198ddb5efba147abc0020fa549d))
+
+- Update README with badges and author information
+  ([`024a151`](https://github.com/mbari-org/skimmer/commit/024a151f606bf904e022b232908dd9ffc7a3473b))
+
+### Features
+
+- Add support for FastAPI and uvicorn
+  ([`ea577ec`](https://github.com/mbari-org/skimmer/commit/ea577ec17c24192fa94083a3ee4b5e282eb200a7))
+
+### Testing
+
+- Switch from requests to httpx for mocking HTTP calls
+  ([`03ff2d0`](https://github.com/mbari-org/skimmer/commit/03ff2d01cee612ad8ea6d15281f78f927d8106f7))
+
+
 ## v0.1.1 (2025-02-19)
 
 ### Bug Fixes

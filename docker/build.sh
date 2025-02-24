@@ -7,9 +7,11 @@ cd "$SCRIPT_DIR"
 # Get the APP_VERSION from skimmer.constants
 APP_VERSION=$(python -c "from skimmer.constants import APP_VERSION; print(APP_VERSION)")
 
-# Build the Docker image
-docker build \
+# Build and push the Docker image for linux/amd64 and linux/arm64
+docker buildx build \
+    --platform linux/amd64,linux/arm64 \
     -t mbari/skimmer:$APP_VERSION \
     -t mbari/skimmer:latest \
     -f Dockerfile \
+    --push \
     ..

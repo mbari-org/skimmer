@@ -3,7 +3,7 @@ from io import BytesIO
 from beholder_client import BeholderClient
 from PIL import Image
 
-from skimmer.cache import CacheController, CachedROI
+from skimmer.cache import CacheController, CachedROI, generate_roi_cache_key
 from skimmer.config import BEHOLDER_API_KEY, BEHOLDER_URL
 from skimmer.exceptions import BeholderNotConfiguredError, InvalidURLError
 from skimmer.utils import is_url_video, is_valid_url
@@ -107,6 +107,9 @@ class Skimmer:
         roi = self._cache.get_roi(url, left, top, right, bottom, ms=ms)
         if roi is not None:
             roi.headers["X-Cache"] = "HIT"
+            # Add client-side caching headers
+            roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            roi.headers["ETag"] = f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
             return roi
 
         # Fetch the image or video frame
@@ -127,6 +130,9 @@ class Skimmer:
         # Cache
         roi = CachedROI(img_data)
         roi.headers["X-Cache"] = "MISS"
+        # Add client-side caching headers
+        roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        roi.headers["ETag"] = f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
         self._cache.set_roi(roi, url, left, top, right, bottom, ms=ms)
 
         return roi
@@ -221,6 +227,9 @@ class Skimmer:
         roi = self._cache.get_roi(url, left, top, right, bottom, ms=ms)
         if roi is not None:
             roi.headers["X-Cache"] = "HIT"
+            # Add client-side caching headers
+            roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            roi.headers["ETag"] = f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
             return roi
 
         # Fetch the image or video frame
@@ -241,6 +250,9 @@ class Skimmer:
         # Cache
         roi = CachedROI(img_data)
         roi.headers["X-Cache"] = "MISS"
+        # Add client-side caching headers
+        roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        roi.headers["ETag"] = f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
         self._cache.set_roi(roi, url, left, top, right, bottom, ms=ms)
 
         return roi

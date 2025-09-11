@@ -1,6 +1,44 @@
 # CHANGELOG
 
 
+## v0.3.0 (2025-09-11)
+
+### Chores
+
+- Minimize Docker image size
+  ([`aa07c77`](https://github.com/mbari-org/skimmer/commit/aa07c77d1c5e18cac62e3bcc3360dd001288bfa2))
+
+- Update default gunicorn conf to disable access log to stdout
+  ([`2b8a5fa`](https://github.com/mbari-org/skimmer/commit/2b8a5fab3060cfed3ef80d5cb9fd18122f0191b8))
+
+- Update Dockerfile to copy gunicorn configuration from env directory
+  ([`9f7e706`](https://github.com/mbari-org/skimmer/commit/9f7e7063cc71498268db864173bca7a768dffe30))
+
+- Use docker buildx for multi-platform builds
+  ([`08802a4`](https://github.com/mbari-org/skimmer/commit/08802a4b5a22e667332294479a8611948d1d3752))
+
+### Documentation
+
+- Add instructions for Copilot
+  ([`6063ac9`](https://github.com/mbari-org/skimmer/commit/6063ac9ba62d4aea7098e3f1d28fb0d28eede10b))
+
+### Features
+
+- Add client-side caching headers for browser and CDN optimization
+  ([#5](https://github.com/mbari-org/skimmer/pull/5),
+  [`007b085`](https://github.com/mbari-org/skimmer/commit/007b0853dfb63def614216ac7e7dcfa23d2eb1a3))
+
+* Initial plan
+
+* Add client-side caching headers (Cache-Control and ETag)
+
+Co-authored-by: kevinsbarnard <40082734+kevinsbarnard@users.noreply.github.com>
+
+---------
+
+Co-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com>
+
+
 ## v0.2.0 (2025-02-21)
 
 ### Chores

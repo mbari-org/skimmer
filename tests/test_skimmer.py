@@ -47,6 +47,42 @@ def test_crop_image_miss(mocker):
     assert cropped_image.headers["X-Cache"] == "MISS"
 
 
+def test_crop_image_caching_headers(mocker):
+    """Test that client-side caching headers are properly set."""
+    url = "https://example.com/image.png"
+    mock_response = mocker.Mock()
+    mock_response.content = open("tests/test_image.png", "rb").read()
+    mocker.patch("httpx.get", return_value=mock_response)
+
+    left, top, right, bottom = 10, 10, 100, 100
+    skimmer = Skimmer()
+    cropped_image = skimmer.generate_crop(url, left, top, right, bottom)
+    
+    # Verify standard cache status
+    assert isinstance(cropped_image, CachedROI)
+    assert cropped_image.headers["X-Cache"] == "MISS"
+    
+    # Verify client-side caching headers
+    assert "Cache-Control" in cropped_image.headers
+    assert "ETag" in cropped_image.headers
+    assert cropped_image.headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    
+    # Verify ETag format (should be quoted and contain the expected hash)
+    etag = cropped_image.headers["ETag"]
+    assert etag.startswith('"') and etag.endswith('"')
+    assert len(etag) > 2  # More than just quotes
+    
+    # Test cache hit case to ensure headers are still present
+    cropped_image_hit = skimmer.generate_crop(url, left, top, right, bottom)
+    assert cropped_image_hit.headers["X-Cache"] == "HIT"
+    assert "Cache-Control" in cropped_image_hit.headers
+    assert "ETag" in cropped_image_hit.headers
+    assert cropped_image_hit.headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    
+    # ETag should be the same for same parameters
+    assert cropped_image_hit.headers["ETag"] == cropped_image.headers["ETag"]
+
+
 def test_crop_endpoint_miss(client, mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
@@ -57,6 +93,32 @@ def test_crop_endpoint_miss(client, mocker):
     assert response.status_code == 200
     assert response.mimetype == "image/png"
     assert response.headers["X-Cache"] == "MISS"
+
+
+def test_crop_endpoint_caching_headers(client, mocker):
+    """Test that client-side caching headers are properly returned by the endpoint."""
+    url = "https://example.com/image.png"
+    mock_response = mocker.Mock()
+    mock_response.content = open("tests/test_image.png", "rb").read()
+    mocker.patch("httpx.get", return_value=mock_response)
+
+    response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100")
+    assert response.status_code == 200
+    assert response.mimetype == "image/png"
+    
+    # Verify all caching headers are present in HTTP response
+    assert "X-Cache" in response.headers
+    assert "Cache-Control" in response.headers
+    assert "ETag" in response.headers
+    
+    # Verify header values
+    assert response.headers["X-Cache"] == "MISS"
+    assert response.headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    
+    # Verify ETag format
+    etag = response.headers["ETag"]
+    assert etag.startswith('"') and etag.endswith('"')
+    assert len(etag) > 2  # More than just quotes
 
 
 def test_crop_endpoint_hit(client, mocker):
@@ -74,6 +136,11 @@ def test_crop_endpoint_hit(client, mocker):
     assert response.status_code == 200
     assert response.mimetype == "image/png"
     assert response.headers["X-Cache"] == "HIT"
+    
+    # Verify caching headers are still present on cache hit
+    assert "Cache-Control" in response.headers
+    assert "ETag" in response.headers
+    assert response.headers["Cache-Control"] == "public, max-age=31536000, immutable"
 
 
 def test_cache_eviction(mocker):

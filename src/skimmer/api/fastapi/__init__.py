@@ -37,7 +37,9 @@ class SkimmerFastAPI:
                 url, left, top, right, bottom, ms=ms
             )
             response = ImageResponse(cropped_image.get_data())
-            response.headers["X-Cache"] = cropped_image.headers["X-Cache"]
+            # Copy all headers from the cached ROI
+            for header_name, header_value in cropped_image.headers.items():
+                response.headers[header_name] = header_value
             return response
 
         except InvalidURLError as e:

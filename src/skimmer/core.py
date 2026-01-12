@@ -109,7 +109,9 @@ class Skimmer:
             roi.headers["X-Cache"] = "HIT"
             # Add client-side caching headers
             roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-            roi.headers["ETag"] = f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
+            roi.headers["ETag"] = (
+                f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
+            )
             return roi
 
         # Fetch the image or video frame
@@ -132,7 +134,9 @@ class Skimmer:
         roi.headers["X-Cache"] = "MISS"
         # Add client-side caching headers
         roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        roi.headers["ETag"] = f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
+        roi.headers["ETag"] = (
+            f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
+        )
         self._cache.set_roi(roi, url, left, top, right, bottom, ms=ms)
 
         return roi
@@ -229,7 +233,9 @@ class Skimmer:
             roi.headers["X-Cache"] = "HIT"
             # Add client-side caching headers
             roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-            roi.headers["ETag"] = f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
+            roi.headers["ETag"] = (
+                f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
+            )
             return roi
 
         # Fetch the image or video frame
@@ -252,7 +258,9 @@ class Skimmer:
         roi.headers["X-Cache"] = "MISS"
         # Add client-side caching headers
         roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        roi.headers["ETag"] = f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
+        roi.headers["ETag"] = (
+            f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
+        )
         self._cache.set_roi(roi, url, left, top, right, bottom, ms=ms)
 
         return roi

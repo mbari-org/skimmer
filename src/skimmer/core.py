@@ -38,7 +38,7 @@ class Skimmer:
             return image
 
         # Fetch the image
-        response = httpx.get(url)
+        response = httpx.get(url, follow_redirects=True)
         response.raise_for_status()
 
         # Convert and cache
@@ -160,7 +160,7 @@ class Skimmer:
 
         # Fetch the image
         async with httpx.AsyncClient() as client:
-            response = await client.get(url)
+            response = await client.get(url, follow_redirects=True)
             response.raise_for_status()
 
         # Convert and cache

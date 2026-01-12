@@ -59,7 +59,7 @@ jobs:
         run: |
           uv python install ${{ matrix.python-version }}
           uv venv --python ${{ matrix.python-version }}
-          uv pip install .
+          uv pip install --group dev .
 
       - name: Test package
         run: |

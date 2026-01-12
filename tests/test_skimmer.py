@@ -229,7 +229,8 @@ def test_fetch_image_with_redirect(mocker):
     """Test that httpx.get follows redirects (e.g., 307 Temporary Redirect)."""
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
-    mock_response.content = open("tests/test_image.png", "rb").read()
+    with open("tests/test_image.png", "rb") as f:
+        mock_response.content = f.read()
 
     # Mock httpx.get and verify follow_redirects=True is passed
     mock_get = mocker.patch("httpx.get", return_value=mock_response)
@@ -248,7 +249,8 @@ def test_crop_endpoint_with_redirect(client, mocker):
     """Test that the /crop endpoint handles redirects properly."""
     url = "https://example.com/redirect-image.png"
     mock_response = mocker.Mock()
-    mock_response.content = open("tests/test_image.png", "rb").read()
+    with open("tests/test_image.png", "rb") as f:
+        mock_response.content = f.read()
 
     # Mock httpx.get to simulate a redirect scenario
     mock_get = mocker.patch("httpx.get", return_value=mock_response)
@@ -268,7 +270,8 @@ async def test_fetch_image_async_with_redirect(mocker):
     """Test that async httpx.AsyncClient.get follows redirects."""
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
-    mock_response.content = open("tests/test_image.png", "rb").read()
+    with open("tests/test_image.png", "rb") as f:
+        mock_response.content = f.read()
 
     # Mock AsyncClient's get method
     mock_client = mocker.AsyncMock()

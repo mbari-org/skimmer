@@ -57,28 +57,33 @@ def test_crop_image_caching_headers(mocker):
     left, top, right, bottom = 10, 10, 100, 100
     skimmer = Skimmer()
     cropped_image = skimmer.generate_crop(url, left, top, right, bottom)
-    
+
     # Verify standard cache status
     assert isinstance(cropped_image, CachedROI)
     assert cropped_image.headers["X-Cache"] == "MISS"
-    
+
     # Verify client-side caching headers
     assert "Cache-Control" in cropped_image.headers
     assert "ETag" in cropped_image.headers
-    assert cropped_image.headers["Cache-Control"] == "public, max-age=31536000, immutable"
-    
+    assert (
+        cropped_image.headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    )
+
     # Verify ETag format (should be quoted and contain the expected hash)
     etag = cropped_image.headers["ETag"]
     assert etag.startswith('"') and etag.endswith('"')
     assert len(etag) > 2  # More than just quotes
-    
+
     # Test cache hit case to ensure headers are still present
     cropped_image_hit = skimmer.generate_crop(url, left, top, right, bottom)
     assert cropped_image_hit.headers["X-Cache"] == "HIT"
     assert "Cache-Control" in cropped_image_hit.headers
     assert "ETag" in cropped_image_hit.headers
-    assert cropped_image_hit.headers["Cache-Control"] == "public, max-age=31536000, immutable"
-    
+    assert (
+        cropped_image_hit.headers["Cache-Control"]
+        == "public, max-age=31536000, immutable"
+    )
+
     # ETag should be the same for same parameters
     assert cropped_image_hit.headers["ETag"] == cropped_image.headers["ETag"]
 
@@ -105,16 +110,16 @@ def test_crop_endpoint_caching_headers(client, mocker):
     response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100")
     assert response.status_code == 200
     assert response.mimetype == "image/png"
-    
+
     # Verify all caching headers are present in HTTP response
     assert "X-Cache" in response.headers
     assert "Cache-Control" in response.headers
     assert "ETag" in response.headers
-    
+
     # Verify header values
     assert response.headers["X-Cache"] == "MISS"
     assert response.headers["Cache-Control"] == "public, max-age=31536000, immutable"
-    
+
     # Verify ETag format
     etag = response.headers["ETag"]
     assert etag.startswith('"') and etag.endswith('"')
@@ -136,7 +141,7 @@ def test_crop_endpoint_hit(client, mocker):
     assert response.status_code == 200
     assert response.mimetype == "image/png"
     assert response.headers["X-Cache"] == "HIT"
-    
+
     # Verify caching headers are still present on cache hit
     assert "Cache-Control" in response.headers
     assert "ETag" in response.headers
@@ -218,3 +223,66 @@ def test_unexpected_error(client, mocker):
     response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100")
     assert response.status_code == 500
     assert response.json == {"error": "An unexpected error occurred: Unexpected error"}
+
+
+def test_fetch_image_with_redirect(mocker):
+    """Test that httpx.get follows redirects (e.g., 307 Temporary Redirect)."""
+    url = "https://example.com/image.png"
+    mock_response = mocker.Mock()
+    mock_response.content = open("tests/test_image.png", "rb").read()
+
+    # Mock httpx.get and verify follow_redirects=True is passed
+    mock_get = mocker.patch("httpx.get", return_value=mock_response)
+
+    skimmer = Skimmer()
+    image = skimmer.fetch_image(url)
+
+    # Verify the image was fetched successfully
+    assert isinstance(image, Image.Image)
+
+    # Verify that httpx.get was called with follow_redirects=True
+    mock_get.assert_called_once_with(url, follow_redirects=True)
+
+
+def test_crop_endpoint_with_redirect(client, mocker):
+    """Test that the /crop endpoint handles redirects properly."""
+    url = "https://example.com/redirect-image.png"
+    mock_response = mocker.Mock()
+    mock_response.content = open("tests/test_image.png", "rb").read()
+
+    # Mock httpx.get to simulate a redirect scenario
+    mock_get = mocker.patch("httpx.get", return_value=mock_response)
+
+    response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100")
+
+    # Verify the request was successful
+    assert response.status_code == 200
+    assert response.mimetype == "image/png"
+
+    # Verify that httpx.get was called with follow_redirects=True
+    mock_get.assert_called_once_with(url, follow_redirects=True)
+
+
+@pytest.mark.asyncio
+async def test_fetch_image_async_with_redirect(mocker):
+    """Test that async httpx.AsyncClient.get follows redirects."""
+    url = "https://example.com/image.png"
+    mock_response = mocker.Mock()
+    mock_response.content = open("tests/test_image.png", "rb").read()
+
+    # Mock AsyncClient's get method
+    mock_client = mocker.AsyncMock()
+    mock_client.get.return_value = mock_response
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = None
+
+    mocker.patch("httpx.AsyncClient", return_value=mock_client)
+
+    skimmer = Skimmer()
+    image = await skimmer.fetch_image_async(url)
+
+    # Verify the image was fetched successfully
+    assert isinstance(image, Image.Image)
+
+    # Verify that client.get was called with follow_redirects=True
+    mock_client.get.assert_called_once_with(url, follow_redirects=True)

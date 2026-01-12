@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.3.1 (2026-01-12)
+
+### Bug Fixes
+
+- Fix 307 response causing 500 error ([#9](https://github.com/mbari-org/skimmer/pull/9),
+  [`dce3249`](https://github.com/mbari-org/skimmer/commit/dce32498ad39254924468debb861951d5d099121))
+
+### Chores
+
+- Add dev group in CI deps install
+  ([`a5a6eca`](https://github.com/mbari-org/skimmer/commit/a5a6eca600a02ef8ad6f0a13b13e257dcb024f4a))
+
+
 ## v0.3.0 (2025-09-11)
 
 ### Chores

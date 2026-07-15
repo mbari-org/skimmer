@@ -241,7 +241,7 @@ def test_fetch_image_with_redirect(mocker):
     assert isinstance(image, Image.Image)
 
     # Verify that httpx.get was called with follow_redirects=True
-    mock_get.assert_called_once_with(url, follow_redirects=True)
+    mock_get.assert_called_once_with(url, follow_redirects=True, verify=False)
 
 
 def test_crop_endpoint_with_redirect(client, mocker):
@@ -260,7 +260,7 @@ def test_crop_endpoint_with_redirect(client, mocker):
     assert response.mimetype == "image/png"
 
     # Verify that httpx.get was called with follow_redirects=True
-    mock_get.assert_called_once_with(url, follow_redirects=True)
+    mock_get.assert_called_once_with(url, follow_redirects=True, verify=False)
 
 
 @pytest.mark.asyncio

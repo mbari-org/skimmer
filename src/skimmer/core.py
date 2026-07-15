@@ -38,7 +38,7 @@ class Skimmer:
             return image
 
         # Fetch the image
-        response = httpx.get(url, follow_redirects=True)
+        response = httpx.get(url, follow_redirects=True, verify=False)
         response.raise_for_status()
 
         # Convert and cache

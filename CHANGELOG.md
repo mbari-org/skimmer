@@ -1,6 +1,36 @@
 # CHANGELOG
 
 
+## v0.3.2 (2026-07-15)
+
+### Bug Fixes
+
+- Disable SSL verification for image fetch requests
+  ([`f829361`](https://github.com/mbari-org/skimmer/commit/f8293611eb4ecb99fe34c6df0200ecca44984cc6))
+
+- Evict ROI cache entries by least-recently-used instead of insertion order
+  ([`5dc05d1`](https://github.com/mbari-org/skimmer/commit/5dc05d1224e9e26b2e82dfe9d11aff5a820eced2))
+
+The disk cache defaulted to diskcache's least-recently-stored policy, which evicts by insertion time
+  regardless of access frequency. This let frequently-requested crops get evicted in favor of stale,
+  rarely-used entries once the cache hit its size limit.
+
+### Testing
+
+- Expect verify=False in redirect test assertions
+  ([`0a2b451`](https://github.com/mbari-org/skimmer/commit/0a2b451ab0db3de445c270621303ca980d24e45a))
+
+fetch_image now calls httpx.get with verify=False, so the mocked-call assertions in the redirect
+  tests need updating to match.
+
+- Fix cache eviction test touching LRU recency in its own loop condition
+  ([`93990f9`](https://github.com/mbari-org/skimmer/commit/93990f9d857e2f945a14dd248ce150fd71616637))
+
+Checking membership via .get() bumps access_time under the least-recently-used eviction policy, so
+  the loop's own termination check kept the target key perpetually "recently used" and prevented it
+  from ever being evicted. Use `in` for a non-touching existence check instead.
+
+
 ## v0.3.1 (2026-01-12)
 
 ### Bug Fixes

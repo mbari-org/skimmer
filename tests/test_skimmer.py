@@ -161,7 +161,7 @@ def test_cache_eviction(mocker):
     skimmer.generate_crop(f"{url}?id=1", left, top, right, bottom)
 
     i = 2
-    while cache._roi_cache.get(initial_key) is not None:
+    while initial_key in cache._roi_cache:
         skimmer.generate_crop(f"{url}?id={i}", left, top, right, bottom)
         i += 1
 

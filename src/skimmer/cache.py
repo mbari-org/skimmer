@@ -54,7 +54,11 @@ class CachedROI:
 class CacheController:
     def __init__(self):
         # Diskcache for ROIs
-        self._roi_cache = Cache(CACHE_DIR, size_limit=ROI_CACHE_SIZE_MB * 1024**2)
+        self._roi_cache = Cache(
+            CACHE_DIR,
+            size_limit=ROI_CACHE_SIZE_MB * 1024**2,
+            eviction_policy="least-recently-used",
+        )
         self._roi_cache.expire()  # Ensure expired items are removed
 
         # In-memory cache for full images

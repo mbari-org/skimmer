@@ -27,18 +27,35 @@ def test_fetch_image(mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("httpx.get", return_value=mock_response)
+    mocker.patch("httpx.Client.get", return_value=mock_response)
 
     skimmer = Skimmer()
     image = skimmer.fetch_image(url)
     assert isinstance(image, Image.Image)
 
 
+def test_fetch_image_reuses_http_client(mocker):
+    """The sync fetch path should reuse one pooled httpx.Client, not open a new one per call."""
+    mock_response = mocker.Mock()
+    mock_response.content = open("tests/test_image.png", "rb").read()
+    mock_get = mocker.patch("httpx.Client.get", return_value=mock_response)
+
+    skimmer = Skimmer()
+    client = skimmer._http_client
+
+    skimmer.fetch_image("https://example.com/image1.png")
+    skimmer.fetch_image("https://example.com/image2.png")
+
+    # Same client instance used across both calls
+    assert skimmer._http_client is client
+    assert mock_get.call_count == 2
+
+
 def test_crop_image_miss(mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("httpx.get", return_value=mock_response)
+    mocker.patch("httpx.Client.get", return_value=mock_response)
 
     left, top, right, bottom = 10, 10, 100, 100
     skimmer = Skimmer()
@@ -52,7 +69,7 @@ def test_crop_image_caching_headers(mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("httpx.get", return_value=mock_response)
+    mocker.patch("httpx.Client.get", return_value=mock_response)
 
     left, top, right, bottom = 10, 10, 100, 100
     skimmer = Skimmer()
@@ -92,7 +109,7 @@ def test_crop_endpoint_miss(client, mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("httpx.get", return_value=mock_response)
+    mocker.patch("httpx.Client.get", return_value=mock_response)
 
     response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100")
     assert response.status_code == 200
@@ -105,7 +122,7 @@ def test_crop_endpoint_caching_headers(client, mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("httpx.get", return_value=mock_response)
+    mocker.patch("httpx.Client.get", return_value=mock_response)
 
     response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100")
     assert response.status_code == 200
@@ -130,7 +147,7 @@ def test_crop_endpoint_hit(client, mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("httpx.get", return_value=mock_response)
+    mocker.patch("httpx.Client.get", return_value=mock_response)
 
     client.get(
         f"/crop?url={url}&left=10&top=10&right=100&bottom=100"
@@ -152,7 +169,7 @@ def test_cache_eviction(mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("httpx.get", return_value=mock_response)
+    mocker.patch("httpx.Client.get", return_value=mock_response)
 
     left, top, right, bottom = 10, 10, 100, 100
     initial_key = generate_roi_cache_key(f"{url}?id=1", left, top, right, bottom)
@@ -174,7 +191,7 @@ def test_filesystem_cache_persistence(mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("httpx.get", return_value=mock_response)
+    mocker.patch("httpx.Client.get", return_value=mock_response)
 
     left, top, right, bottom = 10, 10, 100, 100
     skimmer = Skimmer()
@@ -197,7 +214,7 @@ def test_invalid_url_error(client):
 
 
 def test_crop_endpoint_invalid_coordinates_no_fetch(client, mocker):
-    mock_get = mocker.patch("httpx.get")
+    mock_get = mocker.patch("httpx.Client.get")
 
     response = client.get(
         "/crop?url=https://example.com/image.png&left=100&top=10&right=10&bottom=100"
@@ -210,7 +227,7 @@ def test_crop_endpoint_invalid_coordinates_no_fetch(client, mocker):
 
 
 def test_crop_endpoint_negative_coordinates_no_fetch(client, mocker):
-    mock_get = mocker.patch("httpx.get")
+    mock_get = mocker.patch("httpx.Client.get")
 
     response = client.get(
         "/crop?url=https://example.com/image.png&left=-10&top=10&right=100&bottom=100"
@@ -221,7 +238,7 @@ def test_crop_endpoint_negative_coordinates_no_fetch(client, mocker):
 
 
 def test_crop_endpoint_missing_coordinates(client, mocker):
-    mock_get = mocker.patch("httpx.get")
+    mock_get = mocker.patch("httpx.Client.get")
 
     response = client.get("/crop?url=https://example.com/image.png&left=10&top=10")
     assert response.status_code == 400
@@ -231,7 +248,7 @@ def test_crop_endpoint_missing_coordinates(client, mocker):
 def test_generate_crop_invalid_coordinates_no_fetch(mocker):
     from skimmer.exceptions import InvalidCropParametersError
 
-    mock_get = mocker.patch("httpx.get")
+    mock_get = mocker.patch("httpx.Client.get")
     url = "https://example.com/image.png"
 
     skimmer = Skimmer()
@@ -244,7 +261,7 @@ def test_beholder_not_configured_error(client, mocker):
     url = "https://example.com/video.mp4"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("httpx.get", return_value=mock_response)
+    mocker.patch("httpx.Client.get", return_value=mock_response)
 
     response = client.get(
         f"/crop?url={url}&left=10&top=10&right=100&bottom=100&ms=1000"
@@ -259,7 +276,7 @@ def test_unexpected_error(client, mocker):
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
-    mocker.patch("httpx.get", return_value=mock_response)
+    mocker.patch("httpx.Client.get", return_value=mock_response)
     mocker.patch(
         "skimmer.core.Skimmer.generate_crop", side_effect=Exception("Unexpected error")
     )
@@ -270,22 +287,23 @@ def test_unexpected_error(client, mocker):
 
 
 def test_fetch_image_with_redirect(mocker):
-    """Test that httpx.get follows redirects (e.g., 307 Temporary Redirect)."""
+    """Test that the shared httpx.Client follows redirects (e.g., 307 Temporary Redirect)."""
     url = "https://example.com/image.png"
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
 
-    # Mock httpx.get and verify follow_redirects=True is passed
-    mock_get = mocker.patch("httpx.get", return_value=mock_response)
+    mock_get = mocker.patch("httpx.Client.get", return_value=mock_response)
 
     skimmer = Skimmer()
+
+    # follow_redirects is configured on the shared client, not per-request
+    assert skimmer._http_client.follow_redirects is True
+
     image = skimmer.fetch_image(url)
 
     # Verify the image was fetched successfully
     assert isinstance(image, Image.Image)
-
-    # Verify that httpx.get was called with follow_redirects=True
-    mock_get.assert_called_once_with(url, follow_redirects=True, verify=False)
+    mock_get.assert_called_once_with(url)
 
 
 def test_crop_endpoint_with_redirect(client, mocker):
@@ -294,17 +312,14 @@ def test_crop_endpoint_with_redirect(client, mocker):
     mock_response = mocker.Mock()
     mock_response.content = open("tests/test_image.png", "rb").read()
 
-    # Mock httpx.get to simulate a redirect scenario
-    mock_get = mocker.patch("httpx.get", return_value=mock_response)
+    mock_get = mocker.patch("httpx.Client.get", return_value=mock_response)
 
     response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100")
 
     # Verify the request was successful
     assert response.status_code == 200
     assert response.mimetype == "image/png"
-
-    # Verify that httpx.get was called with follow_redirects=True
-    mock_get.assert_called_once_with(url, follow_redirects=True, verify=False)
+    mock_get.assert_called_once_with(url)
 
 
 @pytest.mark.asyncio

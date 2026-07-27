@@ -15,6 +15,9 @@ fi
 if [ -z "$APP_WORKERS" ]; then
     export APP_WORKERS=1
 fi
+if [ -z "$APP_THREADS" ]; then
+    export APP_THREADS=4
+fi
 
 # Run the app
 gunicorn \

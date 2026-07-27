@@ -9,12 +9,20 @@ from skimmer.exceptions import BeholderNotConfiguredError, InvalidURLError
 from skimmer.utils import is_url_video, is_valid_url, validate_crop_parameters
 
 
+HTTP_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+
+
 class Skimmer:
     def __init__(self):
         self._cache = CacheController()
         self._beholder_client = None
         if BEHOLDER_URL is not None and BEHOLDER_API_KEY is not None:
             self._beholder_client = BeholderClient(BEHOLDER_URL, BEHOLDER_API_KEY)
+
+        # Persistent client for connection pooling/keep-alive across requests
+        self._http_client = httpx.Client(
+            follow_redirects=True, verify=False, timeout=HTTP_TIMEOUT
+        )
 
     def fetch_image(self, url: str) -> Image.Image:
         """
@@ -38,7 +46,7 @@ class Skimmer:
             return image
 
         # Fetch the image
-        response = httpx.get(url, follow_redirects=True, verify=False)
+        response = self._http_client.get(url)
         response.raise_for_status()
 
         # Convert and cache
@@ -171,7 +179,7 @@ class Skimmer:
             return image
 
         # Fetch the image
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             response = await client.get(url, follow_redirects=True)
             response.raise_for_status()
 

@@ -30,7 +30,8 @@ ENV IMAGE_CACHE_SIZE_MB=100 \
     CACHE_DIR=/tmp/skimmer_cache \
     APP_HOST=0.0.0.0 \
     APP_PORT=5000 \
-    APP_WORKERS=1
+    APP_WORKERS=1 \
+    APP_THREADS=4
 
 # Run the application
 CMD ["sh", "-c", "exec gunicorn -w $APP_WORKERS -b $APP_HOST:$APP_PORT 'skimmer:create_default_flask_app()'"]

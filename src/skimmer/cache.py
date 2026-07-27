@@ -1,4 +1,5 @@
 from hashlib import md5
+from threading import Lock
 
 from diskcache import Cache
 from cachetools import LRUCache
@@ -61,11 +62,13 @@ class CacheController:
         )
         self._roi_cache.expire()  # Ensure expired items are removed
 
-        # In-memory cache for full images
+        # In-memory cache for full images. cachetools.LRUCache is not
+        # thread-safe, so access is guarded by _image_cache_lock below.
         self._image_cache = LRUCache(
             maxsize=IMAGE_CACHE_SIZE_MB * 1024**2,
             getsizeof=lambda image: len(image.tobytes()),
         )
+        self._image_cache_lock = Lock()
 
     def set_roi(
         self,
@@ -102,7 +105,8 @@ class CacheController:
             ms (int): The timestamp into the video in milliseconds. For images, this should be 0.
         """
         key = generate_image_cache_key(url, ms=ms)
-        self._image_cache[key] = image
+        with self._image_cache_lock:
+            self._image_cache[key] = image
 
     def get_roi(
         self, url: str, left: int, top: int, right: int, bottom: int, ms: int = 0
@@ -136,7 +140,8 @@ class CacheController:
             Image.Image | None: The cached image or None if not found.
         """
         key = generate_image_cache_key(url, ms=ms)
-        return self._image_cache.get(key)
+        with self._image_cache_lock:
+            return self._image_cache.get(key)
 
     def clear_roi_cache(self):
         """
@@ -148,7 +153,8 @@ class CacheController:
         """
         Clear the image cache.
         """
-        self._image_cache.clear()
+        with self._image_cache_lock:
+            self._image_cache.clear()
 
     def clear(self):
         """

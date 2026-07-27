@@ -14,7 +14,16 @@ class BeholderNotConfiguredError(Exception):
     pass
 
 
+class InvalidCropParametersError(Exception):
+    """
+    Exception raised for invalid crop parameters (coordinates or timestamp).
+    """
+
+    pass
+
+
 __all__ = [
     "InvalidURLError",
     "BeholderNotConfiguredError",
+    "InvalidCropParametersError",
 ]

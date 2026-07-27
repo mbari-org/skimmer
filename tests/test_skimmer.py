@@ -196,6 +196,50 @@ def test_invalid_url_error(client):
     assert response.json == {"error": "Invalid URL: invalid_url"}
 
 
+def test_crop_endpoint_invalid_coordinates_no_fetch(client, mocker):
+    mock_get = mocker.patch("httpx.get")
+
+    response = client.get(
+        "/crop?url=https://example.com/image.png&left=100&top=10&right=10&bottom=100"
+    )
+    assert response.status_code == 400
+    assert response.json == {
+        "error": "right (10) must be greater than left (100)"
+    }
+    mock_get.assert_not_called()
+
+
+def test_crop_endpoint_negative_coordinates_no_fetch(client, mocker):
+    mock_get = mocker.patch("httpx.get")
+
+    response = client.get(
+        "/crop?url=https://example.com/image.png&left=-10&top=10&right=100&bottom=100"
+    )
+    assert response.status_code == 400
+    assert "non-negative" in response.json["error"]
+    mock_get.assert_not_called()
+
+
+def test_crop_endpoint_missing_coordinates(client, mocker):
+    mock_get = mocker.patch("httpx.get")
+
+    response = client.get("/crop?url=https://example.com/image.png&left=10&top=10")
+    assert response.status_code == 400
+    mock_get.assert_not_called()
+
+
+def test_generate_crop_invalid_coordinates_no_fetch(mocker):
+    from skimmer.exceptions import InvalidCropParametersError
+
+    mock_get = mocker.patch("httpx.get")
+    url = "https://example.com/image.png"
+
+    skimmer = Skimmer()
+    with pytest.raises(InvalidCropParametersError):
+        skimmer.generate_crop(url, 100, 10, 10, 100)
+    mock_get.assert_not_called()
+
+
 def test_beholder_not_configured_error(client, mocker):
     url = "https://example.com/video.mp4"
     mock_response = mocker.Mock()

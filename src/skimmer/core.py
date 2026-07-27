@@ -6,7 +6,7 @@ from PIL import Image
 from skimmer.cache import CacheController, CachedROI, generate_roi_cache_key
 from skimmer.config import BEHOLDER_API_KEY, BEHOLDER_URL
 from skimmer.exceptions import BeholderNotConfiguredError, InvalidURLError
-from skimmer.utils import is_url_video, is_valid_url
+from skimmer.utils import is_url_video, is_valid_url, validate_crop_parameters
 
 
 class Skimmer:
@@ -102,7 +102,15 @@ class Skimmer:
 
         Returns:
             CachedROI: The cropped image byte array with custom headers.
+
+        Raises:
+            InvalidURLError: If the URL is invalid.
+            InvalidCropParametersError: If the crop coordinates or timestamp are invalid.
         """
+        if not is_valid_url(url):
+            raise InvalidURLError(f"Invalid URL: {url}")
+        validate_crop_parameters(left, top, right, bottom, ms)
+
         # Check for a cache hit
         roi = self._cache.get_roi(url, left, top, right, bottom, ms=ms)
         if roi is not None:
@@ -226,7 +234,15 @@ class Skimmer:
 
         Returns:
             CachedROI: The cropped image byte array with custom headers.
+
+        Raises:
+            InvalidURLError: If the URL is invalid.
+            InvalidCropParametersError: If the crop coordinates or timestamp are invalid.
         """
+        if not is_valid_url(url):
+            raise InvalidURLError(f"Invalid URL: {url}")
+        validate_crop_parameters(left, top, right, bottom, ms)
+
         # Check for a cache hit
         roi = self._cache.get_roi(url, left, top, right, bottom, ms=ms)
         if roi is not None:

@@ -6,9 +6,12 @@ from psutil import cpu_count, virtual_memory
 from skimmer.api.fastapi.models import Error, HealthStatus
 from skimmer.core import Skimmer
 from skimmer.constants import APP_DESCRIPTION, APP_NAME, APP_VERSION
-from skimmer.exceptions import InvalidURLError, BeholderNotConfiguredError
+from skimmer.exceptions import (
+    InvalidURLError,
+    BeholderNotConfiguredError,
+    InvalidCropParametersError,
+)
 from skimmer.api.fastapi.responses import ErrorResponse, ImageResponse, JSONResponse
-from skimmer.utils import is_valid_url
 
 
 class SkimmerFastAPI:
@@ -30,9 +33,6 @@ class SkimmerFastAPI:
         Crop the image based on the provided URL and coordinates.
         """
         try:
-            if not is_valid_url(url):
-                raise InvalidURLError(f"Invalid URL: {url}")
-
             cropped_image = await self._skimmer.generate_crop_async(
                 url, left, top, right, bottom, ms=ms
             )
@@ -42,7 +42,7 @@ class SkimmerFastAPI:
                 response.headers[header_name] = header_value
             return response
 
-        except InvalidURLError as e:
+        except (InvalidURLError, InvalidCropParametersError) as e:
             return ErrorResponse(str(e))
         except BeholderNotConfiguredError as e:
             return ErrorResponse(str(e), status=500)

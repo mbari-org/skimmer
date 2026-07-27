@@ -5,9 +5,12 @@ from psutil import cpu_count, virtual_memory
 
 from skimmer.core import Skimmer
 from skimmer.constants import APP_DESCRIPTION, APP_NAME, APP_VERSION
-from skimmer.exceptions import InvalidURLError, BeholderNotConfiguredError
+from skimmer.exceptions import (
+    InvalidURLError,
+    BeholderNotConfiguredError,
+    InvalidCropParametersError,
+)
 from skimmer.api.flask.responses import ErrorResponse, ImageResponse, JSONResponse
-from skimmer.utils import is_valid_url
 
 
 class SkimmerFlaskAPI:
@@ -31,14 +34,16 @@ class SkimmerFlaskAPI:
         """
         url = request.args.get("url")
         try:
-            if not is_valid_url(url):
-                raise InvalidURLError(f"Invalid URL: {url}")
-
-            left = int(request.args.get("left"))
-            top = int(request.args.get("top"))
-            right = int(request.args.get("right"))
-            bottom = int(request.args.get("bottom"))
-            ms = int(request.args.get("ms", 0))
+            try:
+                left = int(request.args.get("left"))
+                top = int(request.args.get("top"))
+                right = int(request.args.get("right"))
+                bottom = int(request.args.get("bottom"))
+                ms = int(request.args.get("ms", 0))
+            except (TypeError, ValueError):
+                raise InvalidCropParametersError(
+                    "left, top, right, bottom, and ms must be provided as integers"
+                )
 
             cropped_image = self._skimmer.generate_crop(
                 url, left, top, right, bottom, ms=ms
@@ -49,7 +54,7 @@ class SkimmerFlaskAPI:
                 response.headers[header_name] = header_value
             return response
 
-        except InvalidURLError as e:
+        except (InvalidURLError, InvalidCropParametersError) as e:
             return ErrorResponse(str(e))
         except BeholderNotConfiguredError as e:
             return ErrorResponse(str(e), status=500)

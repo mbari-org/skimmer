@@ -345,3 +345,24 @@ async def test_fetch_image_async_with_redirect(mocker):
 
     # Verify that client.get was called with follow_redirects=True
     mock_client.get.assert_called_once_with(url, follow_redirects=True)
+
+
+@pytest.mark.asyncio
+async def test_fetch_video_frame_async_returns_image(mocker):
+    """fetch_video_frame_async must return the captured frame (regression test)."""
+    url = "https://example.com/video.mp4"
+    ms = 1000
+    frame = Image.open("tests/test_image.png")
+    frame.load()
+
+    skimmer = Skimmer()
+    skimmer._beholder_client = mocker.Mock()
+    skimmer._beholder_client.capture_async = mocker.AsyncMock(return_value=frame)
+
+    image = await skimmer.fetch_video_frame_async(url, ms)
+
+    assert image is frame
+    # Subsequent calls should hit the image cache instead of calling Beholder again
+    cached_image = await skimmer.fetch_video_frame_async(url, ms)
+    assert cached_image is frame
+    skimmer._beholder_client.capture_async.assert_called_once_with(url, ms)

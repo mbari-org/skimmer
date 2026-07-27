@@ -226,6 +226,8 @@ class Skimmer:
         # Cache
         self._cache.set_image(image, url, ms=ms)
 
+        return image
+
     async def generate_crop_async(
         self, url: str, left: int, top: int, right: int, bottom: int, ms: int = 0
     ) -> CachedROI:

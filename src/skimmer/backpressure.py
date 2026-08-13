@@ -105,7 +105,7 @@ class AsyncBoundedGate:
             timeout = self._max_wait_seconds if self._max_wait_seconds > 0 else None
             try:
                 await asyncio.wait_for(self._semaphore.acquire(), timeout=timeout)
-            except TimeoutError:
+            except asyncio.TimeoutError:
                 raise StaleWork(time.monotonic() - start) from None
             return time.monotonic() - start
         finally:

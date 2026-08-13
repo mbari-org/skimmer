@@ -1,8 +1,11 @@
+import random
 from sys import version as python_version
 
+import httpx
 from flask import Flask, request
 from psutil import cpu_count, virtual_memory
 
+from skimmer.backpressure import Saturated, StaleWork
 from skimmer.core import Skimmer
 from skimmer.constants import APP_DESCRIPTION, APP_NAME, APP_VERSION
 from skimmer.exceptions import (
@@ -11,6 +14,11 @@ from skimmer.exceptions import (
     InvalidCropParametersError,
 )
 from skimmer.api.flask.responses import ErrorResponse, ImageResponse, JSONResponse
+
+
+def _retry_after_seconds() -> float:
+    """Jittered so clients shed by the same burst don't all retry in the same instant."""
+    return round(random.uniform(1.0, 3.0), 1)
 
 
 class SkimmerFlaskAPI:
@@ -58,6 +66,28 @@ class SkimmerFlaskAPI:
             return ErrorResponse(str(e))
         except BeholderNotConfiguredError as e:
             return ErrorResponse(str(e), status=500)
+        except Saturated:
+            response = ErrorResponse(
+                "The server is at crop capacity. Please retry shortly.", status=503
+            )
+            response.headers["Retry-After"] = str(_retry_after_seconds())
+            return response
+        except StaleWork:
+            response = ErrorResponse(
+                "Your request waited too long to start. Please retry shortly.", status=503
+            )
+            response.headers["Retry-After"] = str(_retry_after_seconds())
+            return response
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 503:
+                response = ErrorResponse(
+                    "Beholder is at capture capacity. Please retry shortly.", status=503
+                )
+                response.headers["Retry-After"] = e.response.headers.get(
+                    "Retry-After", str(_retry_after_seconds())
+                )
+                return response
+            return ErrorResponse(f"An unexpected error occurred: {str(e)}", status=500)
         except Exception as e:
             return ErrorResponse(f"An unexpected error occurred: {str(e)}", status=500)
 

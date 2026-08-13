@@ -1,6 +1,42 @@
 # CHANGELOG
 
 
+## v0.4.0 (2026-07-27)
+
+### Bug Fixes
+
+- Return captured frame from fetch_video_frame_async
+  ([`c84318a`](https://github.com/mbari-org/skimmer/commit/c84318a6d5b392243dc26cfc9d4fd8686919bc34))
+
+fetch_video_frame_async cached the Beholder-captured frame but never returned it, so
+  generate_crop_async would call .crop() on None for any async-path video request. Return the image,
+  matching the sync fetch_video_frame twin.
+
+### Features
+
+- Pre-validate crop parameters before fetching image/video frames
+  ([`7d81702`](https://github.com/mbari-org/skimmer/commit/7d817025d8a8ce7915d4cf34e9a009509b1cbed8))
+
+Validate the URL and crop coordinates (non-negative, right>left, bottom>top, ms>=0) up front in
+  Skimmer.generate_crop/_async, before any cache lookup or network/frame fetch, and surface bad
+  input as a descriptive 400 via InvalidCropParametersError in both the FastAPI and Flask handlers.
+
+### Performance Improvements
+
+- Use threaded gunicorn workers and a pooled HTTP client under load
+  ([`068bb07`](https://github.com/mbari-org/skimmer/commit/068bb075eeb8c84cc355e242567b55d574151c7d))
+
+Sync gunicorn workers handled one request at a time each, capping concurrency at APP_WORKERS
+  regardless of how I/O-bound a request is (upstream fetch, disk cache). Switch to gthread workers
+  with a tunable APP_THREADS so each worker can overlap I/O waits across threads.
+
+Since the in-memory image LRUCache isn't thread-safe, guard it with a lock now that concurrent
+  access within a worker is possible.
+
+Also reuse a single httpx.Client (with explicit timeouts) across sync image fetches instead of
+  opening a new connection per request, and add a timeout to the async fetch path.
+
+
 ## v0.3.2 (2026-07-15)
 
 ### Bug Fixes

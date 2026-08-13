@@ -1,11 +1,20 @@
 import shutil
 
+import httpx
 import pytest
 from PIL import Image
 
 from skimmer import create_default_flask_app, Skimmer
 from skimmer.cache import CachedROI, generate_roi_cache_key
 from skimmer.config import CACHE_DIR
+
+
+def _beholder_503(retry_after: str | None = "2.5") -> httpx.HTTPStatusError:
+    """Build the error beholder_client raises when Beholder itself sheds load."""
+    request = httpx.Request("POST", "https://beholder.example/capture")
+    headers = {"Retry-After": retry_after} if retry_after is not None else {}
+    response = httpx.Response(503, headers=headers, request=request)
+    return httpx.HTTPStatusError("busy", request=request, response=response)
 
 
 @pytest.fixture
@@ -284,6 +293,47 @@ def test_unexpected_error(client, mocker):
     response = client.get(f"/crop?url={url}&left=10&top=10&right=100&bottom=100")
     assert response.status_code == 500
     assert response.json == {"error": "An unexpected error occurred: Unexpected error"}
+
+
+def test_beholder_503_is_forwarded_as_skimmer_503(client, mocker):
+    """A 503 from Beholder (via beholder_client) must surface as Skimmer's own 503,
+    not the generic 500 catch-all, so callers can retry with the right Retry-After."""
+    url = "https://example.com/video.mp4"
+    mocker.patch(
+        "skimmer.core.Skimmer.generate_crop", side_effect=_beholder_503("2.5")
+    )
+
+    response = client.get(
+        f"/crop?url={url}&left=10&top=10&right=100&bottom=100&ms=1000"
+    )
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "2.5"
+
+
+def test_beholder_503_without_retry_after_falls_back_to_default(client, mocker):
+    mocker.patch(
+        "skimmer.core.Skimmer.generate_crop", side_effect=_beholder_503(None)
+    )
+
+    response = client.get(
+        "/crop?url=https://example.com/video.mp4&left=10&top=10&right=100&bottom=100&ms=1000"
+    )
+    assert response.status_code == 503
+    assert 1.0 <= float(response.headers["Retry-After"]) <= 3.0
+
+
+def test_beholder_non_503_error_is_not_treated_as_busy(client, mocker):
+    request = httpx.Request("POST", "https://beholder.example/capture")
+    error = httpx.HTTPStatusError(
+        "boom", request=request, response=httpx.Response(500, request=request)
+    )
+    mocker.patch("skimmer.core.Skimmer.generate_crop", side_effect=error)
+
+    response = client.get(
+        "/crop?url=https://example.com/video.mp4&left=10&top=10&right=100&bottom=100&ms=1000"
+    )
+    assert response.status_code == 500
+    assert "Retry-After" not in response.headers
 
 
 def test_fetch_image_with_redirect(mocker):

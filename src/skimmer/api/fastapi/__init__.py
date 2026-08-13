@@ -1,6 +1,7 @@
 import random
 from sys import version as python_version
 
+import httpx
 from fastapi import FastAPI
 from psutil import cpu_count, virtual_memory
 
@@ -71,6 +72,16 @@ class SkimmerFastAPI:
             )
             response.headers["Retry-After"] = str(_retry_after_seconds())
             return response
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 503:
+                response = ErrorResponse(
+                    "Beholder is at capture capacity. Please retry shortly.", status=503
+                )
+                response.headers["Retry-After"] = e.response.headers.get(
+                    "Retry-After", str(_retry_after_seconds())
+                )
+                return response
+            return ErrorResponse(f"An unexpected error occurred: {str(e)}", status=500)
         except Exception as e:
             return ErrorResponse(f"An unexpected error occurred: {str(e)}", status=500)
 

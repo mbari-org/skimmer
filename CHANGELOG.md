@@ -1,6 +1,40 @@
 # CHANGELOG
 
 
+## v0.4.1 (2026-08-13)
+
+### Bug Fixes
+
+- Catch asyncio.TimeoutError, not builtin TimeoutError, in AsyncBoundedGate
+  ([`d213f5f`](https://github.com/mbari-org/skimmer/commit/d213f5f87bbdf69e79a016eee760138f7ef3fdb2))
+
+They're the same class on 3.11+, but distinct on 3.10, so the StaleWork conversion was silently
+  skipped there and the raw asyncio.TimeoutError escaped instead. Caught by CI (macos-latest, 3.10).
+
+- Forward Beholder's 503 as Skimmer's own 503 instead of a generic 500
+  ([`00d23ba`](https://github.com/mbari-org/skimmer/commit/00d23baf948f07c2551fe955ccabe7e41258df9a))
+
+Video crops go through beholder_client, which raises httpx.HTTPStatusError (not the requests-style
+  error the rest of the route handler expects) when Beholder sheds load under its own backpressure.
+  Without this, that 503 was falling through to the catch-all and reaching callers as an opaque 500
+  with no Retry-After, so they had no signal to back off and retry.
+
+- Stop the ROI cache's write-on-read, add crop-pool backpressure
+  ([`a15222b`](https://github.com/mbari-org/skimmer/commit/a15222bc34c771ae8b230f4084cb5f62b8e4f689))
+
+diskcache's "least-recently-used" policy runs a SQLite UPDATE (to bump access_time) on every cache
+  read, not just writes. Under concurrent load this serializes on SQLite's single-writer lock and
+  produces a brutal tail (p50 83ms, p99 1030ms in testing). Switched to "least-recently-stored",
+  which needs no write on read: 1489->2200-2940 req/s with the tail collapsing to p99 ~107ms.
+
+Also added a bounded concurrency gate for crop generation, mirroring Beholder 0.3.1's
+  BoundedExecutor: cache misses (the actual fetch/encode work) are now bounded and shed load with a
+  503 + jittered Retry-After under overload instead of degrading into unbounded tail latency. Cache
+  hits bypass the gate entirely so hit-path throughput isn't throttled.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
+
 ## v0.4.0 (2026-07-27)
 
 ### Bug Fixes

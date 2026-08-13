@@ -5,7 +5,12 @@ from diskcache import Cache
 from cachetools import LRUCache
 from PIL import Image
 
-from skimmer.config import IMAGE_CACHE_SIZE_MB, ROI_CACHE_SIZE_MB, CACHE_DIR
+from skimmer.config import (
+    CACHE_DIR,
+    IMAGE_CACHE_SIZE_MB,
+    ROI_CACHE_EVICTION_POLICY,
+    ROI_CACHE_SIZE_MB,
+)
 
 
 def generate_roi_cache_key(
@@ -58,7 +63,7 @@ class CacheController:
         self._roi_cache = Cache(
             CACHE_DIR,
             size_limit=ROI_CACHE_SIZE_MB * 1024**2,
-            eviction_policy="least-recently-used",
+            eviction_policy=ROI_CACHE_EVICTION_POLICY,
         )
         self._roi_cache.expire()  # Ensure expired items are removed
 

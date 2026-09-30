@@ -1,6 +1,54 @@
 # CHANGELOG
 
 
+## v0.5.0 (2026-09-30)
+
+### Documentation
+
+- Document /thumbnail endpoint and thumbnail env vars
+  ([`169b66a`](https://github.com/mbari-org/skimmer/commit/169b66a8513cfe9c91f6f66c53f88283d604d48a))
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+### Features
+
+- Add /thumbnail endpoint serving cached JPEG thumbnails
+  ([`7e8859d`](https://github.com/mbari-org/skimmer/commit/7e8859d3ba5153f20b6bcea13b560f3085051a50))
+
+GET /thumbnail?url=...&size=small|medium|large[&ms=...] returns a JPEG of the full image or video
+  frame, scaled to fit the preset's longest edge (aspect preserved, never upscaled).
+
+- Presets and JPEG quality configurable via THUMBNAIL_SIZE_* and THUMBNAIL_JPEG_QUALITY; cache key
+  uses resolved pixels + quality so config changes don't serve stale thumbnails - Separate diskcache
+  (THUMBNAIL_CACHE_SIZE_MB / THUMBNAIL_CACHE_DIR) so thumbnail traffic can't evict ROIs - Sources
+  are not added to the in-memory image cache (an already-cached source is reused); JPEG sources
+  decode via Pillow draft mode - Misses go through the existing bounded gate, so overload returns
+  503 - Both Flask and FastAPI routes, sharing error mapping with /crop
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+### Refactoring
+
+- Share response-header and error-mapping logic across endpoints
+  ([`b011439`](https://github.com/mbari-org/skimmer/commit/b01143969cc22715608c5bca616440b8c1974852))
+
+- Extract _set_response_headers in core for X-Cache/Cache-Control/ETag - Move exception-to-HTTP
+  mapping into skimmer.api.errors, used by both Flask and FastAPI layers - Generalize CachedROI into
+  CachedImage with a media_type (alias kept for existing on-disk pickles); ImageResponse takes a
+  media_type
+
+Prepares for a JPEG thumbnail endpoint without duplicating this logic.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+### Testing
+
+- Move shared client and cache-clearing fixtures to conftest
+  ([`c0d1a06`](https://github.com/mbari-org/skimmer/commit/c0d1a06b0dd04f7eaf84a07708b9c44e84c1db06))
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+
 ## v0.4.1 (2026-08-13)
 
 ### Bug Fixes

@@ -1,7 +1,10 @@
 from mimetypes import guess_type
 from urllib.parse import urlparse
 
-from skimmer.exceptions import InvalidCropParametersError
+from skimmer.exceptions import (
+    InvalidCropParametersError,
+    InvalidThumbnailParametersError,
+)
 
 
 def is_url_video(url: str) -> bool:
@@ -64,6 +67,28 @@ def validate_crop_parameters(
             f"bottom ({bottom}) must be greater than top ({top})"
         )
     if ms < 0:
-        raise InvalidCropParametersError(
-            f"ms must be non-negative, got {ms}"
+        raise InvalidCropParametersError(f"ms must be non-negative, got {ms}")
+
+
+def resolve_thumbnail_size(size: str, sizes: dict[str, int], ms: int) -> int:
+    """
+    Validate thumbnail parameters and resolve a size preset to pixels.
+
+    Args:
+        size (str): The size preset name.
+        sizes (dict[str, int]): Mapping of preset names to longest edge in pixels.
+        ms (int): The timestamp into the video in milliseconds.
+
+    Returns:
+        int: The longest edge of the thumbnail in pixels.
+
+    Raises:
+        InvalidThumbnailParametersError: If the size is unknown or ms is negative.
+    """
+    if size not in sizes:
+        raise InvalidThumbnailParametersError(
+            f"size must be one of {', '.join(sizes)}, got {size!r}"
         )
+    if ms < 0:
+        raise InvalidThumbnailParametersError(f"ms must be non-negative, got {ms}")
+    return sizes[size]

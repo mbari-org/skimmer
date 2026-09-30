@@ -7,6 +7,7 @@ from skimmer.api.errors import describe_error
 from skimmer.api.fastapi.models import Error, HealthStatus
 from skimmer.cache import CachedImage
 from skimmer.core import Skimmer
+from skimmer.config import THUMBNAIL_DEFAULT_SIZE
 from skimmer.constants import APP_DESCRIPTION, APP_NAME, APP_VERSION
 from skimmer.api.fastapi.responses import ErrorResponse, ImageResponse, JSONResponse
 
@@ -60,6 +61,24 @@ class SkimmerFastAPI:
         except Exception as e:
             return _error_response(e)
 
+    async def thumbnail(
+        self,
+        url: str,
+        size: str = THUMBNAIL_DEFAULT_SIZE,
+        ms: int = 0,
+    ) -> ImageResponse:
+        """
+        Generate a JPEG thumbnail of the image or video frame at the provided URL.
+        """
+        try:
+            thumbnail = await self._skimmer.generate_thumbnail_async(
+                url, size=size, ms=ms
+            )
+            return _image_response(thumbnail)
+
+        except Exception as e:
+            return _error_response(e)
+
     async def health(self) -> JSONResponse:
         """
         Check the health of the API.
@@ -91,6 +110,19 @@ class SkimmerFastAPI:
                 200: {"content": {"image/png": {}}},
                 400: {"model": Error},
                 500: {"model": Error},
+            },
+            response_class=ImageResponse,
+        )
+        self._app.add_api_route(
+            "/thumbnail",
+            self.thumbnail,
+            methods=["GET"],
+            status_code=200,
+            responses={
+                200: {"content": {"image/jpeg": {}}},
+                400: {"model": Error},
+                500: {"model": Error},
+                503: {"model": Error},
             },
             response_class=ImageResponse,
         )

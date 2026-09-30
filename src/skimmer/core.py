@@ -4,16 +4,30 @@ from beholder_client import BeholderClient
 from PIL import Image
 
 from skimmer.backpressure import AsyncBoundedGate, BoundedGate
-from skimmer.cache import CacheController, CachedImage, generate_roi_cache_key
+from skimmer.cache import (
+    CacheController,
+    CachedImage,
+    generate_roi_cache_key,
+    generate_thumbnail_cache_key,
+)
 from skimmer.config import (
     BEHOLDER_API_KEY,
     BEHOLDER_URL,
     CROP_POOL_MAX_WAIT_SECONDS,
     CROP_POOL_QUEUE_SIZE,
     CROP_POOL_SLOTS,
+    THUMBNAIL_JPEG_QUALITY,
+    THUMBNAIL_DEFAULT_SIZE,
+    THUMBNAIL_SIZES,
 )
 from skimmer.exceptions import BeholderNotConfiguredError, InvalidURLError
-from skimmer.utils import is_url_video, is_valid_url, validate_crop_parameters
+from skimmer.thumbnail import decode_for_thumbnail, render_thumbnail
+from skimmer.utils import (
+    is_url_video,
+    is_valid_url,
+    resolve_thumbnail_size,
+    validate_crop_parameters,
+)
 
 
 HTTP_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
@@ -40,7 +54,7 @@ class Skimmer:
             follow_redirects=True, verify=False, timeout=HTTP_TIMEOUT
         )
 
-        # Bounds concurrent crop generation the same way Beholder bounds
+        # Bounds concurrent crop/thumbnail generation the same way Beholder bounds
         # concurrent ffmpeg captures, so overload sheds load (503) instead of
         # degrading into unbounded tail latency. Only one of these is ever
         # exercised in a given process (Flask uses the sync gate, FastAPI the
@@ -51,6 +65,19 @@ class Skimmer:
         self._crop_gate_async = AsyncBoundedGate(
             CROP_POOL_SLOTS, CROP_POOL_QUEUE_SIZE, CROP_POOL_MAX_WAIT_SECONDS
         )
+
+    def _download(self, url: str) -> bytes:
+        """Download raw bytes from the given URL."""
+        response = self._http_client.get(url)
+        response.raise_for_status()
+        return response.content
+
+    async def _download_async(self, url: str) -> bytes:
+        """Download raw bytes from the given URL asynchronously."""
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            response = await client.get(url, follow_redirects=True)
+            response.raise_for_status()
+        return response.content
 
     def fetch_image(self, url: str) -> Image.Image:
         """
@@ -74,24 +101,26 @@ class Skimmer:
             return image
 
         # Fetch the image
-        response = self._http_client.get(url)
-        response.raise_for_status()
+        image_bytes = self._download(url)
 
         # Convert and cache
-        image_bytes = response.content
         with BytesIO(image_bytes) as img_buffer:
             image = Image.open(img_buffer)
             image.load()
             self._cache.set_image(image, url)
             return image
 
-    def fetch_video_frame(self, url: str, ms: int) -> Image.Image:
+    def fetch_video_frame(
+        self, url: str, ms: int, cache_result: bool = True
+    ) -> Image.Image:
         """
         Fetch a video frame using Beholder.
 
         Args:
             url (str): The URL of the video.
             ms (int): The timestamp into the video in milliseconds.
+            cache_result (bool): Whether to store a freshly fetched frame in the
+                in-memory image cache.
 
         Returns:
             Image.Image: The fetched video frame.
@@ -118,7 +147,8 @@ class Skimmer:
         image = self._beholder_client.capture(url, ms)
 
         # Cache
-        self._cache.set_image(image, url, ms=ms)
+        if cache_result:
+            self._cache.set_image(image, url, ms=ms)
 
         return image
 
@@ -204,25 +234,26 @@ class Skimmer:
             return image
 
         # Fetch the image
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            response = await client.get(url, follow_redirects=True)
-            response.raise_for_status()
+        image_bytes = await self._download_async(url)
 
         # Convert and cache
-        image_bytes = response.content
         with BytesIO(image_bytes) as img_buffer:
             image = Image.open(img_buffer)
             image.load()
             self._cache.set_image(image, url)
             return image
 
-    async def fetch_video_frame_async(self, url: str, ms: int) -> Image.Image:
+    async def fetch_video_frame_async(
+        self, url: str, ms: int, cache_result: bool = True
+    ) -> Image.Image:
         """
         Fetch a video frame using Beholder asynchronously.
 
         Args:
             url (str): The URL of the video.
             ms (int): The timestamp into the video in milliseconds.
+            cache_result (bool): Whether to store a freshly fetched frame in the
+                in-memory image cache.
 
         Returns:
             Image.Image: The fetched video frame.
@@ -249,7 +280,8 @@ class Skimmer:
         image = await self._beholder_client.capture_async(url, ms)
 
         # Cache
-        self._cache.set_image(image, url, ms=ms)
+        if cache_result:
+            self._cache.set_image(image, url, ms=ms)
 
         return image
 
@@ -310,6 +342,103 @@ class Skimmer:
             self._cache.set_roi(roi, url, left, top, right, bottom, ms=ms)
 
             return roi
+        finally:
+            self._crop_gate_async.release()
+
+    def _check_thumbnail_cache(
+        self, url: str, size: str, ms: int
+    ) -> tuple[int, str, CachedImage | None]:
+        """Validate thumbnail parameters and look up a cached thumbnail.
+
+        Returns:
+            tuple[int, str, CachedImage | None]: The max edge, ETag, and cached
+            thumbnail (with headers set) or None on a miss.
+        """
+        if not is_valid_url(url):
+            raise InvalidURLError(f"Invalid URL: {url}")
+        max_edge = resolve_thumbnail_size(size, THUMBNAIL_SIZES, ms)
+        etag = generate_thumbnail_cache_key(url, max_edge, THUMBNAIL_JPEG_QUALITY, ms)
+        thumbnail = self._cache.get_thumbnail(
+            url, max_edge, THUMBNAIL_JPEG_QUALITY, ms=ms
+        )
+        if thumbnail is not None:
+            thumbnail = _set_response_headers(thumbnail, etag, hit=True)
+        return max_edge, etag, thumbnail
+
+    def _store_thumbnail(
+        self, source: Image.Image, url: str, max_edge: int, etag: str, ms: int
+    ) -> CachedImage:
+        """Render a thumbnail from its source image and cache it."""
+        data = render_thumbnail(source, max_edge, THUMBNAIL_JPEG_QUALITY)
+        thumbnail = _set_response_headers(
+            CachedImage(data, media_type="image/jpeg"), etag, hit=False
+        )
+        self._cache.set_thumbnail(
+            thumbnail, url, max_edge, THUMBNAIL_JPEG_QUALITY, ms=ms
+        )
+        return thumbnail
+
+    def generate_thumbnail(
+        self, url: str, size: str = THUMBNAIL_DEFAULT_SIZE, ms: int = 0
+    ) -> CachedImage:
+        """
+        Generate a JPEG thumbnail of the full image or video frame at the given URL.
+
+        Thumbnail sources are not added to the in-memory image cache: they are
+        typically large and used once, and would evict images reused by crops.
+        An already-cached source is reused, though.
+
+        Args:
+            url (str): The URL of the image or video.
+            size (str): The size preset name (see THUMBNAIL_SIZES).
+            ms (int): The timestamp into the video in milliseconds. For images, this should be 0.
+
+        Returns:
+            CachedImage: The JPEG thumbnail with custom headers.
+
+        Raises:
+            InvalidURLError: If the URL is invalid.
+            InvalidThumbnailParametersError: If the size or timestamp is invalid.
+            skimmer.backpressure.Saturated: If the pool has no room left.
+            skimmer.backpressure.StaleWork: If the request waited too long for a slot.
+        """
+        max_edge, etag, thumbnail = self._check_thumbnail_cache(url, size, ms)
+        if thumbnail is not None:
+            return thumbnail
+
+        self._crop_gate.acquire()
+        try:
+            if is_url_video(url):
+                source = self.fetch_video_frame(url, ms, cache_result=False)
+            else:
+                source = self._cache.get_image(url)
+                if source is None:
+                    source = decode_for_thumbnail(self._download(url), max_edge)
+            return self._store_thumbnail(source, url, max_edge, etag, ms)
+        finally:
+            self._crop_gate.release()
+
+    async def generate_thumbnail_async(
+        self, url: str, size: str = THUMBNAIL_DEFAULT_SIZE, ms: int = 0
+    ) -> CachedImage:
+        """
+        Async equivalent of :meth:`generate_thumbnail`.
+        """
+        max_edge, etag, thumbnail = self._check_thumbnail_cache(url, size, ms)
+        if thumbnail is not None:
+            return thumbnail
+
+        await self._crop_gate_async.acquire()
+        try:
+            if is_url_video(url):
+                source = await self.fetch_video_frame_async(url, ms, cache_result=False)
+            else:
+                source = self._cache.get_image(url)
+                if source is None:
+                    source = decode_for_thumbnail(
+                        await self._download_async(url), max_edge
+                    )
+            return self._store_thumbnail(source, url, max_edge, etag, ms)
         finally:
             self._crop_gate_async.release()
 

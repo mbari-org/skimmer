@@ -6,8 +6,12 @@ from psutil import cpu_count, virtual_memory
 from skimmer.api.errors import describe_error
 from skimmer.cache import CachedImage
 from skimmer.core import Skimmer
+from skimmer.config import THUMBNAIL_DEFAULT_SIZE
 from skimmer.constants import APP_DESCRIPTION, APP_NAME, APP_VERSION
-from skimmer.exceptions import InvalidCropParametersError
+from skimmer.exceptions import (
+    InvalidCropParametersError,
+    InvalidThumbnailParametersError,
+)
 from skimmer.api.flask.responses import ErrorResponse, ImageResponse, JSONResponse
 
 
@@ -67,6 +71,27 @@ class SkimmerFlaskAPI:
         except Exception as e:
             return _error_response(e)
 
+    def thumbnail(self) -> ImageResponse:
+        """
+        Generate a JPEG thumbnail of the image or video frame at the provided URL.
+
+        Returns:
+            ImageResponse: The JPEG thumbnail with custom headers.
+        """
+        url = request.args.get("url")
+        size = request.args.get("size", THUMBNAIL_DEFAULT_SIZE)
+        try:
+            try:
+                ms = int(request.args.get("ms", 0))
+            except (TypeError, ValueError):
+                raise InvalidThumbnailParametersError("ms must be an integer")
+
+            thumbnail = self._skimmer.generate_thumbnail(url, size=size, ms=ms)
+            return _image_response(thumbnail)
+
+        except Exception as e:
+            return _error_response(e)
+
     def health(self) -> JSONResponse:
         """
         Check the health of the API.
@@ -93,6 +118,7 @@ class SkimmerFlaskAPI:
         Configure the Flask application routes.
         """
         self._app.route("/crop", methods=["GET"])(self.crop)
+        self._app.route("/thumbnail", methods=["GET"])(self.thumbnail)
         self._app.route("/health", methods=["GET"])(self.health)
 
     @property

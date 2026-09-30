@@ -11,6 +11,7 @@ from skimmer.backpressure import Saturated, StaleWork
 from skimmer.exceptions import (
     BeholderNotConfiguredError,
     InvalidCropParametersError,
+    InvalidThumbnailParametersError,
     InvalidURLError,
 )
 
@@ -30,7 +31,10 @@ def describe_error(e: Exception) -> tuple[str, int, dict[str, str]]:
     Returns:
         tuple[str, int, dict[str, str]]: The error message, status code, and extra headers.
     """
-    if isinstance(e, (InvalidURLError, InvalidCropParametersError)):
+    if isinstance(
+        e,
+        (InvalidURLError, InvalidCropParametersError, InvalidThumbnailParametersError),
+    ):
         return str(e), 400, {}
     if isinstance(e, BeholderNotConfiguredError):
         return str(e), 500, {}

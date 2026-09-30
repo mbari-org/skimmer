@@ -22,8 +22,17 @@ class InvalidCropParametersError(Exception):
     pass
 
 
+class InvalidThumbnailParametersError(Exception):
+    """
+    Exception raised for invalid thumbnail parameters (size or timestamp).
+    """
+
+    pass
+
+
 __all__ = [
     "InvalidURLError",
     "BeholderNotConfiguredError",
     "InvalidCropParametersError",
+    "InvalidThumbnailParametersError",
 ]

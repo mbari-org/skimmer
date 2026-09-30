@@ -10,6 +10,8 @@ from skimmer.config import (
     IMAGE_CACHE_SIZE_MB,
     ROI_CACHE_EVICTION_POLICY,
     ROI_CACHE_SIZE_MB,
+    THUMBNAIL_CACHE_DIR,
+    THUMBNAIL_CACHE_SIZE_MB,
 )
 
 
@@ -31,6 +33,28 @@ def generate_roi_cache_key(
         str: The generated ROI cache key.
     """
     key = f"{url}_{ms}_{left}_{top}_{right}_{bottom}"
+    return md5(key.encode()).hexdigest()
+
+
+def generate_thumbnail_cache_key(
+    url: str, max_edge: int, quality: int, ms: int = 0
+) -> str:
+    """
+    Generate a thumbnail cache key based on URL and rendering parameters.
+
+    Keyed on the resolved pixel size and quality (not the preset name) so a
+    config change produces new thumbnails instead of serving stale ones.
+
+    Args:
+        url (str): The URL of the image or video.
+        max_edge (int): The longest edge of the thumbnail in pixels.
+        quality (int): The JPEG quality.
+        ms (int): The timestamp into the video in milliseconds. For images, this should be 0.
+
+    Returns:
+        str: The generated thumbnail cache key.
+    """
+    key = f"thumbnail_{url}_{ms}_{max_edge}_{quality}"
     return md5(key.encode()).hexdigest()
 
 
@@ -74,6 +98,14 @@ class CacheController:
             eviction_policy=ROI_CACHE_EVICTION_POLICY,
         )
         self._roi_cache.expire()  # Ensure expired items are removed
+
+        # Diskcache for thumbnails
+        self._thumbnail_cache = Cache(
+            THUMBNAIL_CACHE_DIR,
+            size_limit=THUMBNAIL_CACHE_SIZE_MB * 1024**2,
+            eviction_policy=ROI_CACHE_EVICTION_POLICY,
+        )
+        self._thumbnail_cache.expire()
 
         # In-memory cache for full images. cachetools.LRUCache is not
         # thread-safe, so access is guarded by _image_cache_lock below.
@@ -156,11 +188,51 @@ class CacheController:
         with self._image_cache_lock:
             return self._image_cache.get(key)
 
+    def set_thumbnail(
+        self, thumbnail: CachedImage, url: str, max_edge: int, quality: int, ms: int = 0
+    ):
+        """
+        Set a thumbnail in the cache.
+
+        Args:
+            thumbnail (CachedImage): The cached thumbnail.
+            url (str): The URL of the image or video.
+            max_edge (int): The longest edge of the thumbnail in pixels.
+            quality (int): The JPEG quality.
+            ms (int): The timestamp into the video in milliseconds. For images, this should be 0.
+        """
+        key = generate_thumbnail_cache_key(url, max_edge, quality, ms=ms)
+        self._thumbnail_cache.set(key, thumbnail)
+
+    def get_thumbnail(
+        self, url: str, max_edge: int, quality: int, ms: int = 0
+    ) -> CachedImage | None:
+        """
+        Get a thumbnail from the cache.
+
+        Args:
+            url (str): The URL of the image or video.
+            max_edge (int): The longest edge of the thumbnail in pixels.
+            quality (int): The JPEG quality.
+            ms (int): The timestamp into the video in milliseconds. For images, this should be 0.
+
+        Returns:
+            CachedImage | None: The cached thumbnail or None if not found.
+        """
+        key = generate_thumbnail_cache_key(url, max_edge, quality, ms=ms)
+        return self._thumbnail_cache.get(key)
+
     def clear_roi_cache(self):
         """
         Clear the ROI cache.
         """
         self._roi_cache.clear()
+
+    def clear_thumbnail_cache(self):
+        """
+        Clear the thumbnail cache.
+        """
+        self._thumbnail_cache.clear()
 
     def clear_image_cache(self):
         """
@@ -171,7 +243,8 @@ class CacheController:
 
     def clear(self):
         """
-        Clear both the ROI and image caches.
+        Clear the ROI, thumbnail, and image caches.
         """
         self.clear_roi_cache()
+        self.clear_thumbnail_cache()
         self.clear_image_cache()

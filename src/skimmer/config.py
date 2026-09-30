@@ -28,3 +28,17 @@ BEHOLDER_API_KEY = getenv("BEHOLDER_API_KEY")
 CROP_POOL_SLOTS = int(getenv("CROP_POOL_SLOTS", 0)) or max(2, (cpu_count() or 4) // 2)
 CROP_POOL_QUEUE_SIZE = int(getenv("CROP_POOL_QUEUE_SIZE", 0)) or CROP_POOL_SLOTS * 8
 CROP_POOL_MAX_WAIT_SECONDS = float(getenv("CROP_POOL_MAX_WAIT_SECONDS", 15.0))
+
+# JPEG thumbnails. Presets map a size name to the longest edge in pixels;
+# fixed presets keep the number of cached variants per source small.
+THUMBNAIL_SIZES = {
+    "small": int(getenv("THUMBNAIL_SIZE_SMALL", 128)),
+    "medium": int(getenv("THUMBNAIL_SIZE_MEDIUM", 256)),
+    "large": int(getenv("THUMBNAIL_SIZE_LARGE", 512)),
+}
+THUMBNAIL_DEFAULT_SIZE = getenv("THUMBNAIL_DEFAULT_SIZE", "medium")
+THUMBNAIL_JPEG_QUALITY = int(getenv("THUMBNAIL_JPEG_QUALITY", 85))
+
+# Separate disk cache so thumbnail traffic can't evict ROIs (and vice versa)
+THUMBNAIL_CACHE_SIZE_MB = int(getenv("THUMBNAIL_CACHE_SIZE_MB", 500))
+THUMBNAIL_CACHE_DIR = Path(getenv("THUMBNAIL_CACHE_DIR", CACHE_DIR / "thumbnails"))

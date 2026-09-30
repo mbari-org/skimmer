@@ -1,6 +1,6 @@
 # Skimmer
 
-Skimmer is a service that fetches an image from a URL, crops it based on provided bounding box coordinates, caches the result in memory & on the filesystem, and returns the cropped image.
+Skimmer is a service that fetches an image from a URL, crops it based on provided bounding box coordinates, caches the result in memory & on the filesystem, and returns the cropped image. It can also sit in front of (potentially high-res) images and serve cached JPEG thumbnails.
 
 Skimmer also integrates with [Beholder](https://github.com/mbari-org/beholder) to fetch frames from videos.
 
@@ -66,6 +66,20 @@ The response will be a PNG image representing the cropped region of interest.
    # image bytes
    ```
 
+#### Thumbnail
+
+The `/thumbnail` endpoint returns a JPEG thumbnail of the full image (or video frame), scaled to fit a preset size with its aspect ratio preserved. It takes the following query parameters:
+- `url`: The URL of the image or video.
+- `size`: The size preset: `small`, `medium`, or `large` (default: `medium`). Each preset is the longest edge in pixels; see [Thumbnail](#thumbnail-1) environment variables.
+- `ms`: The timestamp in milliseconds for videos.
+
+Thumbnails are cached on disk separately from ROIs. Sources fetched for a thumbnail are not added to the in-memory image cache, and JPEG sources are decoded at reduced scale (Pillow draft mode), so large images are cheap to thumbnail. Images are never upscaled.
+
+```sh
+curl "http://localhost:5000/thumbnail?url=http://example.com/image.jpg&size=small"
+# JPEG bytes
+```
+
 #### Health Check
 
 The service also provides a health check endpoint at `/health` that returns a 200 status code if the service is running and a JSON response with some process info. For example:
@@ -106,6 +120,15 @@ docker compose -f docker/compose.yaml up
 - `IMAGE_CACHE_SIZE_MB`: The maximum size of the in-memory cache for full images in megabytes (default: 100). Note that this is per-worker, so the total memory usage will be approximately `APP_WORKERS * IMAGE_CACHE_SIZE_MB`.
 - `CACHE_DIR`: The directory to store the filesystem cache (default: `/tmp/skimmer_cache`).
 - `ROI_CACHE_SIZE_MB`: The maximum size of the filesystem cache for ROIs in megabytes (default: 100).
+
+### Thumbnail
+- `THUMBNAIL_SIZE_SMALL`, `THUMBNAIL_SIZE_MEDIUM`, `THUMBNAIL_SIZE_LARGE`: The longest edge in pixels for each size preset (defaults: 128, 256, 512).
+- `THUMBNAIL_DEFAULT_SIZE`: The preset used when `size` is omitted (default: `medium`).
+- `THUMBNAIL_JPEG_QUALITY`: The JPEG quality, 1-95 (default: 85).
+- `THUMBNAIL_CACHE_SIZE_MB`: The maximum size of the filesystem cache for thumbnails in megabytes (default: 500).
+- `THUMBNAIL_CACHE_DIR`: The directory for the thumbnail cache (default: `$CACHE_DIR/thumbnails`).
+
+Changing a preset size or the quality produces new thumbnails rather than serving stale ones.
 
 ### Beholder
 - `BEHOLDER_URL`: The URL of the Beholder service to use for fetching images. If unspecified, the service will still work for static images, but it will not be able to fetch frames from video using Beholder.

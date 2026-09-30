@@ -1,12 +1,10 @@
-import shutil
 
 import httpx
 import pytest
 from PIL import Image
 
-from skimmer import create_default_flask_app, Skimmer
+from skimmer import Skimmer
 from skimmer.cache import CachedROI, generate_roi_cache_key
-from skimmer.config import CACHE_DIR
 
 
 def _beholder_503(retry_after: str | None = "2.5") -> httpx.HTTPStatusError:
@@ -15,21 +13,6 @@ def _beholder_503(retry_after: str | None = "2.5") -> httpx.HTTPStatusError:
     headers = {"Retry-After": retry_after} if retry_after is not None else {}
     response = httpx.Response(503, headers=headers, request=request)
     return httpx.HTTPStatusError("busy", request=request, response=response)
-
-
-@pytest.fixture
-def client():
-    app = create_default_flask_app()
-    app.config["TESTING"] = True
-    with app.test_client() as client:
-        yield client
-
-
-@pytest.fixture(autouse=True)
-def clear_cache():
-    Skimmer()._cache.clear()
-    shutil.rmtree(CACHE_DIR)
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def test_fetch_image(mocker):

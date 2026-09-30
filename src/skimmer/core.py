@@ -4,7 +4,7 @@ from beholder_client import BeholderClient
 from PIL import Image
 
 from skimmer.backpressure import AsyncBoundedGate, BoundedGate
-from skimmer.cache import CacheController, CachedROI, generate_roi_cache_key
+from skimmer.cache import CacheController, CachedImage, generate_roi_cache_key
 from skimmer.config import (
     BEHOLDER_API_KEY,
     BEHOLDER_URL,
@@ -17,6 +17,15 @@ from skimmer.utils import is_url_video, is_valid_url, validate_crop_parameters
 
 
 HTTP_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+CACHE_CONTROL = "public, max-age=31536000, immutable"
+
+
+def _set_response_headers(image: CachedImage, etag: str, hit: bool) -> CachedImage:
+    """Set cache status and client-side caching headers on a cached image."""
+    image.headers["X-Cache"] = "HIT" if hit else "MISS"
+    image.headers["Cache-Control"] = CACHE_CONTROL
+    image.headers["ETag"] = f'"{etag}"'
+    return image
 
 
 class Skimmer:
@@ -115,7 +124,7 @@ class Skimmer:
 
     def generate_crop(
         self, url: str, left: int, top: int, right: int, bottom: int, ms: int = 0
-    ) -> CachedROI:
+    ) -> CachedImage:
         """
         Generate a crop from the given URL based on the provided coordinates.
 
@@ -128,7 +137,7 @@ class Skimmer:
             ms (int): The timestamp into the video in milliseconds. For images, this should be 0.
 
         Returns:
-            CachedROI: The cropped image byte array with custom headers.
+            CachedImage: The cropped image byte array with custom headers.
 
         Raises:
             InvalidURLError: If the URL is invalid.
@@ -142,14 +151,9 @@ class Skimmer:
 
         # Check for a cache hit
         roi = self._cache.get_roi(url, left, top, right, bottom, ms=ms)
+        etag = generate_roi_cache_key(url, left, top, right, bottom, ms)
         if roi is not None:
-            roi.headers["X-Cache"] = "HIT"
-            # Add client-side caching headers
-            roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-            roi.headers["ETag"] = (
-                f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
-            )
-            return roi
+            return _set_response_headers(roi, etag, hit=True)
 
         # Only misses (the actual fetch/encode work) go through the bounded
         # gate; a cache hit above is cheap and shouldn't be throttled by it.
@@ -171,13 +175,7 @@ class Skimmer:
                     img_data = img_byte_arr.getvalue()
 
             # Cache
-            roi = CachedROI(img_data)
-            roi.headers["X-Cache"] = "MISS"
-            # Add client-side caching headers
-            roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-            roi.headers["ETag"] = (
-                f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
-            )
+            roi = _set_response_headers(CachedImage(img_data), etag, hit=False)
             self._cache.set_roi(roi, url, left, top, right, bottom, ms=ms)
 
             return roi
@@ -257,7 +255,7 @@ class Skimmer:
 
     async def generate_crop_async(
         self, url: str, left: int, top: int, right: int, bottom: int, ms: int = 0
-    ) -> CachedROI:
+    ) -> CachedImage:
         """
         Generate a crop from the given URL based on the provided coordinates asynchronously.
 
@@ -270,7 +268,7 @@ class Skimmer:
             ms (int): The timestamp into the video in milliseconds. For images, this should be 0.
 
         Returns:
-            CachedROI: The cropped image byte array with custom headers.
+            CachedImage: The cropped image byte array with custom headers.
 
         Raises:
             InvalidURLError: If the URL is invalid.
@@ -284,14 +282,9 @@ class Skimmer:
 
         # Check for a cache hit
         roi = self._cache.get_roi(url, left, top, right, bottom, ms=ms)
+        etag = generate_roi_cache_key(url, left, top, right, bottom, ms)
         if roi is not None:
-            roi.headers["X-Cache"] = "HIT"
-            # Add client-side caching headers
-            roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-            roi.headers["ETag"] = (
-                f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
-            )
-            return roi
+            return _set_response_headers(roi, etag, hit=True)
 
         # Only misses (the actual fetch/encode work) go through the bounded
         # gate; a cache hit above is cheap and shouldn't be throttled by it.
@@ -313,13 +306,7 @@ class Skimmer:
                     img_data = img_byte_arr.getvalue()
 
             # Cache
-            roi = CachedROI(img_data)
-            roi.headers["X-Cache"] = "MISS"
-            # Add client-side caching headers
-            roi.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-            roi.headers["ETag"] = (
-                f'"{generate_roi_cache_key(url, left, top, right, bottom, ms)}"'
-            )
+            roi = _set_response_headers(CachedImage(img_data), etag, hit=False)
             self._cache.set_roi(roi, url, left, top, right, bottom, ms=ms)
 
             return roi

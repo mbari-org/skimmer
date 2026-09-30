@@ -48,13 +48,21 @@ def generate_image_cache_key(url: str, ms: int = 0) -> str:
     return (url, ms)
 
 
-class CachedROI:
-    def __init__(self, data: bytes):
+class CachedImage:
+    # Class-level default so entries pickled before media_type existed still load
+    media_type = "image/png"
+
+    def __init__(self, data: bytes, media_type: str = "image/png"):
         self.data = data
+        self.media_type = media_type
         self.headers = {}
 
     def get_data(self) -> bytes:
         return self.data
+
+
+# Alias kept so existing on-disk pickles (stored as CachedROI) still unpickle
+CachedROI = CachedImage
 
 
 class CacheController:

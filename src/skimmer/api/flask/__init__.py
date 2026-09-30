@@ -1,24 +1,30 @@
-import random
 from sys import version as python_version
 
-import httpx
 from flask import Flask, request
 from psutil import cpu_count, virtual_memory
 
-from skimmer.backpressure import Saturated, StaleWork
+from skimmer.api.errors import describe_error
+from skimmer.cache import CachedImage
 from skimmer.core import Skimmer
 from skimmer.constants import APP_DESCRIPTION, APP_NAME, APP_VERSION
-from skimmer.exceptions import (
-    InvalidURLError,
-    BeholderNotConfiguredError,
-    InvalidCropParametersError,
-)
+from skimmer.exceptions import InvalidCropParametersError
 from skimmer.api.flask.responses import ErrorResponse, ImageResponse, JSONResponse
 
 
-def _retry_after_seconds() -> float:
-    """Jittered so clients shed by the same burst don't all retry in the same instant."""
-    return round(random.uniform(1.0, 3.0), 1)
+def _image_response(image: CachedImage) -> ImageResponse:
+    """Build an image response carrying the cached image's headers."""
+    response = ImageResponse(image.get_data(), media_type=image.media_type)
+    for header_name, header_value in image.headers.items():
+        response.headers[header_name] = header_value
+    return response
+
+
+def _error_response(e: Exception) -> ErrorResponse:
+    message, status, headers = describe_error(e)
+    response = ErrorResponse(message, status=status)
+    for header_name, header_value in headers.items():
+        response.headers[header_name] = header_value
+    return response
 
 
 class SkimmerFlaskAPI:
@@ -56,40 +62,10 @@ class SkimmerFlaskAPI:
             cropped_image = self._skimmer.generate_crop(
                 url, left, top, right, bottom, ms=ms
             )
-            response = ImageResponse(cropped_image.get_data())
-            # Copy all headers from the cached ROI
-            for header_name, header_value in cropped_image.headers.items():
-                response.headers[header_name] = header_value
-            return response
+            return _image_response(cropped_image)
 
-        except (InvalidURLError, InvalidCropParametersError) as e:
-            return ErrorResponse(str(e))
-        except BeholderNotConfiguredError as e:
-            return ErrorResponse(str(e), status=500)
-        except Saturated:
-            response = ErrorResponse(
-                "The server is at crop capacity. Please retry shortly.", status=503
-            )
-            response.headers["Retry-After"] = str(_retry_after_seconds())
-            return response
-        except StaleWork:
-            response = ErrorResponse(
-                "Your request waited too long to start. Please retry shortly.", status=503
-            )
-            response.headers["Retry-After"] = str(_retry_after_seconds())
-            return response
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 503:
-                response = ErrorResponse(
-                    "Beholder is at capture capacity. Please retry shortly.", status=503
-                )
-                response.headers["Retry-After"] = e.response.headers.get(
-                    "Retry-After", str(_retry_after_seconds())
-                )
-                return response
-            return ErrorResponse(f"An unexpected error occurred: {str(e)}", status=500)
         except Exception as e:
-            return ErrorResponse(f"An unexpected error occurred: {str(e)}", status=500)
+            return _error_response(e)
 
     def health(self) -> JSONResponse:
         """

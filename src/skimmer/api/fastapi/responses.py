@@ -9,10 +9,13 @@ class ImageResponse(StreamingResponse):
     Args:
         image (bytes): The image byte data.
         status (int): The HTTP status code. Defaults to 200.
+        media_type (str): The image media type. Defaults to "image/png".
     """
 
-    def __init__(self, response: bytes, status: int = 200):
-        super().__init__(BytesIO(response), media_type="image/png", status_code=status)
+    def __init__(
+        self, response: bytes, status: int = 200, media_type: str = "image/png"
+    ):
+        super().__init__(BytesIO(response), media_type=media_type, status_code=status)
 
 
 class JSONResponse(FastAPIJSONResponse):
